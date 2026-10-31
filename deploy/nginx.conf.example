@@ -1,0 +1,18 @@
+# Use inside your HTTPS server block. Replace paths and backend address.
+root /srv/plugg-admin/dist;
+index index.html;
+location / { try_files $uri $uri/ /index.html; }
+location /api/admin/v1/ {
+  proxy_pass http://127.0.0.1:3000;
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+location /api/stream/ {
+  proxy_pass http://127.0.0.1:3000;
+  proxy_set_header Host $host;
+}
+location /api/file/ {
+  proxy_pass http://127.0.0.1:3000;
+  proxy_set_header Host $host;
+}

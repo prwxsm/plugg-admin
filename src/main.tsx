@@ -1,0 +1,10 @@
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
+import { AdminApp } from "./components/admin/admin-app";
+import "./styles.css";
+const root = createRootRoute({component:AdminApp});
+const pages = ["/", "/admin", "/admin/review-queue", "/admin/scheduled", "/admin/catalog", "/admin/complaints", "/admin/artists", "/admin/genres", "/admin/users", "/admin/processing", "/admin/telemetry", "/admin/analytics", "/admin/staff"];
+const routeTree = root.addChildren(pages.map(path=>createRoute({getParentRoute:()=>root,path,component:()=>null})));
+const router = createRouter({routeTree});
+createRoot(document.getElementById("root")!).render(<React.StrictMode><RouterProvider router={router}/></React.StrictMode>);
