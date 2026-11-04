@@ -41,3 +41,11 @@ Writes require `Content-Type: application/json`, `X-Plugg-Admin: 1`, and an acce
 Build this project and serve `dist/` on your admin HTTPS domain. Configure SPA fallback and reverse-proxy only `/api/admin/v1/`, `/api/stream/`, `/api/file/` to the existing Plugg backend. See `deploy/nginx.conf.example`. Set backend `PLUGG_ADMIN_ORIGINS=https://your-admin-domain` and frontend `VITE_PLUGG_SITE_URL=https://your-main-domain` before building. Use HTTPS and preserve Origin and Cookie/Set-Cookie headers through the proxy. Do not expose the PostgreSQL port. No permissive CORS is needed.
 
 The local defaults allow localhost/127.0.0.1 port 3001 only in development. The main backend can be deployed independently of this frontend. The public main app, artist dashboard and database are not moved by this extraction.
+
+## Cloudflare deployment
+
+`wrangler.jsonc` and `worker/index.mjs` prepare Workers Static Assets with SPA routing and a same-origin API gateway. Run `node --test tests/worker.test.mjs` and `npm run build`. Before building for production, set the public build variable `VITE_PLUGG_SITE_URL=https://plugg.site` (no credentials).
+
+The admin is deployed at `https://admin.plugg.site/admin`. Its same-origin gateway proxies the approved API and media paths to the existing Render Node backend configured in `PLUGG_BACKEND_ORIGIN`. The database and storage credentials stay on Render. See `DEPLOYMENT.md` for redeployment instructions.
+
+Cloudflare secrets belong in Worker secrets, never VITE variables or Git. `.dev.vars` and local Wrangler state are ignored. API responses are never cached; existing HttpOnly cookies and byte-range media responses are preserved.

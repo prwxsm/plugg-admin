@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "plugg-admin",
+  "main": "worker/index.mjs",
+  "compatibility_date": "2026-10-31",
+  "workers_dev": true,
+  "routes": [{ "pattern": "admin.plugg.site", "custom_domain": true }],
+  "account_id": "d5547d92c5a59d24c06262c061fb9943",
+  "vars": { "PLUGG_BACKEND_ORIGIN": "https://plugg-92h9.onrender.com" },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": false }
+  // API requests proxy to the existing Render backend; credentials stay on Render.
+  // Custom domain is the approved administrative origin on the Render backend.
+  // No R2, Containers, or paid plan is provisioned by this config.
+}

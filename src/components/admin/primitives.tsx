@@ -229,10 +229,10 @@ export function Variants({ track }: { track: AdminTrack }) {
         <button
           type="button"
           onClick={handleRetry}
-          disabled={retrying}
+          disabled={retrying || track.processingAvailable === false}
           className="ml-2 px-2.5 py-1 text-[11px] rounded bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
-          {retrying ? "Retrying…" : "Retry transcoding"}
+          {track.processingAvailable === false ? "Local processing required" : retrying ? "Retrying…" : "Retry transcoding"}
         </button>
       )}
     </div>
