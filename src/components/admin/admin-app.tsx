@@ -23,11 +23,12 @@ import {
   CalendarClock,
   ChartNoAxesCombined,
 } from "lucide-react";
-import { getAdminSnapshot } from "@/lib/api";
+import { getAdminSnapshot, performAdminOperation } from "@/lib/api";
 import { loginUser, logoutUser } from "@/lib/api";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   count,
+  safeMediaUrl,
   kampala,
   pendingHours,
   statusLabels,
@@ -228,6 +229,45 @@ export function AdminApp() {
       match(`${u.name} ${u.username || ""} ${u.email} ${u.artistName || ""}`) &&
       (filter === "admin" ? u.isAdmin : filter === "all" || u.accountType === filter),
   );
+  const verifications = (data.verifications || []).filter((v) =>
+    match(`${v.stageName} ${v.legalName} ${v.contactEmail} ${v.primaryGenre || ""}`),
+  );
+
+  const handleReviewVerification = async (
+    targetId: string,
+    status: "approved" | "rejected" | "more_info_required",
+    feedbackPrompt?: string,
+  ) => {
+    let feedback = "";
+    if (status !== "approved") {
+      const input = window.prompt(feedbackPrompt || "Enter feedback for artist:");
+      if (!input || !input.trim()) return;
+      feedback = input.trim();
+    } else {
+      if (
+        !window.confirm(
+          "Approve this artist's verification application and grant official verified badge?",
+        )
+      ) {
+        return;
+      }
+    }
+    try {
+      await performAdminOperation({
+        data: {
+          action: "review_verification",
+          targetId,
+          verificationStatus: status,
+          feedback,
+          reason: feedback || "Approved artist verification application",
+          confirmed: true,
+        },
+      });
+      await refresh();
+    } catch (err: any) {
+      alert(err?.message || "Operation failed");
+    }
+  };
   return (
     <div className="ad-app ad-real">
       <aside className={`ad-sidebar ${mobile ? "open" : ""}`}>
@@ -259,7 +299,7 @@ export function AdminApp() {
               >
                 <Icon size={17} />
                 <span>{name}</span>
-                {name === "Review Queue" && <b>{m.pending}</b>}
+                {name === "Review Queue" && <b>{m.pending + (m.pendingVerifications || 0)}</b>}
               </Link>
             ))}
         </nav>
@@ -413,7 +453,12 @@ export function AdminApp() {
             <>
               <div className="ad-tabs">
                 {[
-                  ["all", "All pending", m.pending],
+                  ["all", "Pending releases", m.pending],
+                  [
+                    "verifications",
+                    "Artist verifications",
+                    (data.verifications || []).filter((v) => v.status === "pending").length,
+                  ],
                   ["critical", "Critical SLA (≥18h)", m.approaching + m.breached],
                   [
                     "processing",
@@ -441,118 +486,310 @@ export function AdminApp() {
                 ))}
               </div>
               <div className="ad-review-list">
-                {reviews.map((r) => (
-                  <section className="ad-panel ad-review" key={r.id}>
-                    <div className="ad-review-heading">
-                      <Artwork src={r.coverUrl} title={`${r.title} artwork`} className="ad-cover" />
-                      <div>
-                        <div className="ad-tags">
-                          <h2>{r.title}</h2>
-                          <Pill>{r.type}</Pill>
-                          {r.rightsHold && (
-                            <Pill tone="red">
-                              RIGHTS HOLD: {r.rightsHoldReason || "Publication blocked"}
-                            </Pill>
-                          )}
-                          <Pill tone={r.rightsDeclarationAccepted ? "green" : "amber"}>
-                            Rights:{" "}
-                            {r.rightsDeclarationAccepted
-                              ? `Confirmed (${r.uploaderRole || "owner"})`
-                              : "Unconfirmed"}
-                          </Pill>
-                        </div>
-                        <p>
-                          <Link to="/admin/artists" hash={r.artistId}>
-                            {r.artistName}
-                          </Link>{" "}
-                          · {r.label || "Label not recorded"}
-                        </p>
-                        <small>
-                          Release date: {r.releaseDate} · Stored go-live: {kampala(r.goLiveAt)} EAT
-                        </small>
-                        {r.goLiveAt && Date.parse(r.goLiveAt) <= now && (
-                          <Pill tone="red">Original publication time elapsed</Pill>
-                        )}
-                      </div>
-                      <div className="ad-review-sla">
-                        {r.status === "under_review" ? (
-                          <SLA release={r} now={now} />
-                        ) : (
-                          <Pill tone="amber">Changes required</Pill>
-                        )}
-                      </div>
-                    </div>
-                    {r.trackIds
-                      .map((id) => data.tracks.find((t) => t.id === id))
-                      .filter((t): t is AdminTrack => !!t)
-                      .map((t, i) => (
-                        <div className="ad-track" key={t.id}>
-                          <div className="ad-track-heading">
-                            <span className="ad-track-index">{String(i + 1).padStart(2, "0")}</span>
-                            <div>
-                              <strong>
-                                {t.title}
-                                {t.features ? ` feat. ${t.features}` : ""}
-                              </strong>
-                              <small>
-                                Producer: {t.producers || "Not recorded"} ·{" "}
-                                {Math.floor(t.durationSeconds / 60)}:
-                                {String(t.durationSeconds % 60).padStart(2, "0")} ·{" "}
-                                Plugg ID: {t.pluggTrackId || "Not assigned"}
-                                {t.isrc ? ` · Official ISRC: ${t.isrc}` : ""}
-                              </small>
-                              <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                <Pill tone={t.recordingType === "remix" || t.recordingType === "cover" ? "amber" : ""}>
-                                  Type: {(t.recordingType || "original").toUpperCase()}
-                                </Pill>
-                                {t.hasSamplesOrBeats && (
-                                  <Pill tone="amber">
-                                    3rd-Party Content: {t.sampleDetails || "Samples/licensed beats"}
-                                  </Pill>
-                                )}
-                                {t.duplicateMatchesCount && t.duplicateMatchesCount > 0 ? (
-                                  <Pill tone="red">
-                                    DUPLICATE AUDIO: Exact checksum match in other artist catalog ({t.duplicateMatchesCount})
-                                  </Pill>
-                                ) : null}
-                              </div>
+                {filter === "verifications" && (
+                  <>
+                    {verifications.map((v) => (
+                      <section className="ad-panel ad-review" key={v.id}>
+                        <div className="ad-review-heading">
+                          <div style={{ flex: 1 }}>
+                            <div
+                              className="ad-tags"
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <h2 style={{ margin: 0 }}>{v.stageName}</h2>
+                              <Pill
+                                tone={
+                                  v.status === "approved"
+                                    ? "green"
+                                    : v.status === "pending"
+                                      ? "blue"
+                                      : v.status === "more_info_required"
+                                        ? "amber"
+                                        : "red"
+                                }
+                              >
+                                {v.status === "approved"
+                                  ? "VERIFIED"
+                                  : v.status === "pending"
+                                    ? "PENDING REVIEW"
+                                    : v.status === "more_info_required"
+                                      ? "MORE INFO REQUIRED"
+                                      : "DECLINED"}
+                              </Pill>
+                              {v.primaryGenre && <Pill>{v.primaryGenre}</Pill>}
                             </div>
+                            <p style={{ marginTop: 6 }}>
+                              Legal Name: <strong>{v.legalName}</strong> · Contact:{" "}
+                              <a
+                                href={`mailto:${v.contactEmail}`}
+                                style={{ color: "var(--color-primary)" }}
+                              >
+                                {v.contactEmail}
+                              </a>
+                              {v.contactPhone ? ` · Tel: ${v.contactPhone}` : ""}
+                              {v.city || v.country
+                                ? ` · Location: ${[v.city, v.country].filter(Boolean).join(", ")}`
+                                : ""}
+                            </p>
+                            <small>
+                              Submitted: {kampala(v.createdAt)} EAT
+                              {v.reviewedAt ? ` · Last reviewed: ${kampala(v.reviewedAt)} EAT` : ""}
+                            </small>
                           </div>
-                          <Specs track={t} />
-                          <AudioPreview track={t} />
-                          <Variants track={t} />
                         </div>
-                      ))}
-                    {!r.trackIds.length && (
-                      <Empty title="No linked tracks">
-                        This release has no non-seed tracks recorded.
+
+                        <div
+                          style={{
+                            padding: "12px 16px",
+                            borderTop: "1px solid var(--color-border)",
+                          }}
+                        >
+                          <h4
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "var(--color-muted)",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              marginBottom: 6,
+                            }}
+                          >
+                            Supporting Profiles & Links ({v.supportingLinks?.length || 0})
+                          </h4>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            {(v.supportingLinks || []).map((link, idx) => (
+                              <a
+                                key={idx}
+                                href={safeMediaUrl(link) || undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ad-btn"
+                                style={{ fontSize: 12, padding: "4px 10px" }}
+                              >
+                                {link} ↗
+                              </a>
+                            ))}
+                          </div>
+
+                          {v.note && (
+                            <div
+                              style={{
+                                marginTop: 10,
+                                fontSize: 13,
+                                background: "rgba(255,255,255,0.03)",
+                                padding: "8px 12px",
+                                borderRadius: 8,
+                              }}
+                            >
+                              <strong>Artist Note:</strong> {v.note}
+                            </div>
+                          )}
+
+                          {v.adminFeedback && (
+                            <div
+                              style={{
+                                marginTop: 8,
+                                fontSize: 13,
+                                color: "var(--color-amber)",
+                                background: "rgba(251,191,36,0.08)",
+                                padding: "8px 12px",
+                                borderRadius: 8,
+                              }}
+                            >
+                              <strong>Previous Admin Feedback:</strong> {v.adminFeedback}
+                            </div>
+                          )}
+                        </div>
+
+                        {data.currentUser.role !== "moderator" && v.status === "pending" && (
+                          <div
+                            className="ad-review-footer"
+                            style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}
+                          >
+                            <button
+                              className="ad-btn"
+                              style={{ color: "#34d399", borderColor: "rgba(52,211,153,0.3)" }}
+                              onClick={() => void handleReviewVerification(v.id, "approved")}
+                            >
+                              Approve & Grant Verified Badge
+                            </button>
+                            <button
+                              className="ad-btn"
+                              style={{ color: "#fbbf24", borderColor: "rgba(251,191,36,0.3)" }}
+                              onClick={() =>
+                                void handleReviewVerification(
+                                  v.id,
+                                  "more_info_required",
+                                  "Enter details or links required from the artist:",
+                                )
+                              }
+                            >
+                              Request More Info
+                            </button>
+                            <button
+                              className="ad-btn"
+                              style={{ color: "#f87171", borderColor: "rgba(248,113,113,0.3)" }}
+                              onClick={() =>
+                                void handleReviewVerification(
+                                  v.id,
+                                  "rejected",
+                                  "Enter reason for declining verification:",
+                                )
+                              }
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
+                      </section>
+                    ))}
+                    {!verifications.length && (
+                      <Empty title="No verification applications">
+                        There are currently no verification applications matching this search.
                       </Empty>
                     )}
-                    <details className="ad-history">
-                      <summary>Recorded review history · {r.reviewHistory.length} events</summary>
-                      {r.reviewHistory.map((h, i) => (
-                        <div key={i}>
-                          <small>
-                            {kampala(h.timestamp)} · {h.actorName || "Actor not recorded"}
-                          </small>
+                  </>
+                )}
+                {filter !== "verifications" &&
+                  reviews.map((r) => (
+                    <section className="ad-panel ad-review" key={r.id}>
+                      <div className="ad-review-heading">
+                        <Artwork
+                          src={r.coverUrl}
+                          title={`${r.title} artwork`}
+                          className="ad-cover"
+                        />
+                        <div>
+                          <div className="ad-tags">
+                            <h2>{r.title}</h2>
+                            <Pill>{r.type}</Pill>
+                            {r.rightsHold && (
+                              <Pill tone="red">
+                                RIGHTS HOLD: {r.rightsHoldReason || "Publication blocked"}
+                              </Pill>
+                            )}
+                            <Pill tone={r.rightsDeclarationAccepted ? "green" : "amber"}>
+                              Rights:{" "}
+                              {r.rightsDeclarationAccepted
+                                ? `Confirmed (${r.uploaderRole || "owner"})`
+                                : "Unconfirmed"}
+                            </Pill>
+                          </div>
                           <p>
-                            {h.action.replaceAll("_", " ")}
-                            {h.feedback ? ` — ${h.feedback}` : ""}
-                            {h.notes ? ` — ${h.notes}` : ""}
+                            <Link to="/admin/artists" hash={r.artistId}>
+                              {r.artistName}
+                            </Link>{" "}
+                            · {r.label || "Label not recorded"}
                           </p>
+                          <small>
+                            Release date: {r.releaseDate} · Stored go-live: {kampala(r.goLiveAt)}{" "}
+                            EAT
+                          </small>
+                          {r.goLiveAt && Date.parse(r.goLiveAt) <= now && (
+                            <Pill tone="red">Original publication time elapsed</Pill>
+                          )}
                         </div>
-                      ))}
-                      {r.reviewFeedback && <p>Latest feedback: {r.reviewFeedback}</p>}
-                      {!r.reviewHistory.length && (
-                        <p>No review history is recorded for this release.</p>
+                        <div className="ad-review-sla">
+                          {r.status === "under_review" ? (
+                            <SLA release={r} now={now} />
+                          ) : (
+                            <Pill tone="amber">Changes required</Pill>
+                          )}
+                        </div>
+                      </div>
+                      {r.trackIds
+                        .map((id) => data.tracks.find((t) => t.id === id))
+                        .filter((t): t is AdminTrack => !!t)
+                        .map((t, i) => (
+                          <div className="ad-track" key={t.id}>
+                            <div className="ad-track-heading">
+                              <span className="ad-track-index">
+                                {String(i + 1).padStart(2, "0")}
+                              </span>
+                              <div>
+                                <strong>
+                                  {t.title}
+                                  {t.features ? ` feat. ${t.features}` : ""}
+                                </strong>
+                                <small>
+                                  Producer: {t.producers || "Not recorded"} ·{" "}
+                                  {Math.floor(t.durationSeconds / 60)}:
+                                  {String(t.durationSeconds % 60).padStart(2, "0")} · Plugg ID:{" "}
+                                  {t.pluggTrackId || "Not assigned"}
+                                  {t.isrc ? ` · Official ISRC: ${t.isrc}` : ""}
+                                </small>
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    display: "flex",
+                                    gap: 6,
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <Pill
+                                    tone={
+                                      t.recordingType === "remix" || t.recordingType === "cover"
+                                        ? "amber"
+                                        : ""
+                                    }
+                                  >
+                                    Type: {(t.recordingType || "original").toUpperCase()}
+                                  </Pill>
+                                  {t.hasSamplesOrBeats && (
+                                    <Pill tone="amber">
+                                      3rd-Party Content:{" "}
+                                      {t.sampleDetails || "Samples/licensed beats"}
+                                    </Pill>
+                                  )}
+                                  {t.duplicateMatchesCount && t.duplicateMatchesCount > 0 ? (
+                                    <Pill tone="red">
+                                      DUPLICATE AUDIO: Exact checksum match in other artist catalog
+                                      ({t.duplicateMatchesCount})
+                                    </Pill>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                            <Specs track={t} />
+                            <AudioPreview track={t} />
+                            <Variants track={t} />
+                          </div>
+                        ))}
+                      {!r.trackIds.length && (
+                        <Empty title="No linked tracks">
+                          This release has no non-seed tracks recorded.
+                        </Empty>
                       )}
-                    </details>
-                    <div className="ad-review-footer">
-                      <span>Use the review actions above to record your decision.</span>
-                    </div>
-                  </section>
-                ))}
-                {!reviews.length && (
+                      <details className="ad-history">
+                        <summary>Recorded review history · {r.reviewHistory.length} events</summary>
+                        {r.reviewHistory.map((h, i) => (
+                          <div key={i}>
+                            <small>
+                              {kampala(h.timestamp)} · {h.actorName || "Actor not recorded"}
+                            </small>
+                            <p>
+                              {h.action.replaceAll("_", " ")}
+                              {h.feedback ? ` — ${h.feedback}` : ""}
+                              {h.notes ? ` — ${h.notes}` : ""}
+                            </p>
+                          </div>
+                        ))}
+                        {r.reviewFeedback && <p>Latest feedback: {r.reviewFeedback}</p>}
+                        {!r.reviewHistory.length && (
+                          <p>No review history is recorded for this release.</p>
+                        )}
+                      </details>
+                      <div className="ad-review-footer">
+                        <span>Use the review actions above to record your decision.</span>
+                      </div>
+                    </section>
+                  ))}
+                {filter !== "verifications" && !reviews.length && (
                   <Empty title="No submissions in this view">
                     The database returned no matching review submissions.
                   </Empty>
@@ -744,14 +981,22 @@ export function AdminApp() {
                 >
                   <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Active Rights Holds</h3>
                   <small style={{ color: "var(--ad-muted, #6b7280)" }}>
-                    Releases held from Africa/Kampala midnight publication and streaming until rights review is complete.
+                    Releases held from Africa/Kampala midnight publication and streaming until
+                    rights review is complete.
                   </small>
                 </div>
                 <div className="ad-table-wrap">
                   <table>
                     <thead>
                       <tr>
-                        {["Release", "Artist", "Status", "Hold Reason", "Hold Placed", "Actions"].map((x) => (
+                        {[
+                          "Release",
+                          "Artist",
+                          "Status",
+                          "Hold Reason",
+                          "Hold Placed",
+                          "Actions",
+                        ].map((x) => (
                           <th key={x}>{x}</th>
                         ))}
                       </tr>
@@ -766,7 +1011,9 @@ export function AdminApp() {
                                 <Artwork src={r.coverUrl} title="" />
                                 <div>
                                   <strong>{r.title}</strong>
-                                  <small>{r.type} · {r.releaseDate}</small>
+                                  <small>
+                                    {r.type} · {r.releaseDate}
+                                  </small>
                                 </div>
                               </div>
                             </td>
@@ -779,7 +1026,9 @@ export function AdminApp() {
                                 {r.rightsHoldReason || "Rights review pending"}
                               </strong>
                             </td>
-                            <td>{r.rightsHoldPlacedAt ? kampala(r.rightsHoldPlacedAt) : "Recorded"}</td>
+                            <td>
+                              {r.rightsHoldPlacedAt ? kampala(r.rightsHoldPlacedAt) : "Recorded"}
+                            </td>
                             <td>
                               <Pill tone="red">Held</Pill>
                             </td>
@@ -790,7 +1039,8 @@ export function AdminApp() {
                 </div>
                 {!data.releases.some((r) => r.rightsHold) && (
                   <Empty title="No active rights holds">
-                    There are no catalog or scheduled releases currently blocked by publication holds.
+                    There are no catalog or scheduled releases currently blocked by publication
+                    holds.
                   </Empty>
                 )}
               </section>
@@ -806,7 +1056,8 @@ export function AdminApp() {
                     Copyright Complaints (support@plugg.site)
                   </h3>
                   <small style={{ color: "var(--ad-muted, #6b7280)" }}>
-                    Privately recorded reports, complainant contacts (staff only), and resolution history.
+                    Privately recorded reports, complainant contacts (staff only), and resolution
+                    history.
                   </small>
                 </div>
                 <div className="ad-table-wrap">
@@ -910,8 +1161,8 @@ export function AdminApp() {
                 ))}
               </div>
               <Unavailable>
-                Verification is displayed as stored. Unverified does not imply a pending KYC
-                request; no KYC request table or featured-artist field exists.
+                Verification reflects the current badge. Review submitted badge applications in
+                Review Queue → Artist verifications.
               </Unavailable>
               <section className="ad-panel">
                 <div className="ad-table-wrap">
