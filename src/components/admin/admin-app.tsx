@@ -200,12 +200,11 @@ export function AdminApp() {
     .filter((r) =>
       filter === "changes"
         ? r.status === "changes_required"
-        : r.status === "under_review" &&
-          (filter === "critical"
-            ? (pendingHours(r, now) ?? -1) >= 18
-            : filter === "processing"
-              ? ["pending", "processing"].includes(r.audioProcessingStatus)
-              : true),
+        : filter === "processing"
+          ? r.status === "processing" ||
+            (r.status === "under_review" && ["pending", "processing"].includes(r.audioProcessingStatus))
+          : r.status === "under_review" &&
+            (filter !== "critical" || (pendingHours(r, now) ?? -1) >= 18),
     )
     .sort((a, b) => {
       const aTime = a.reviewSubmittedAt ? Date.parse(a.reviewSubmittedAt) : null;
@@ -465,8 +464,9 @@ export function AdminApp() {
                     "Audio processing",
                     data.releases.filter(
                       (r) =>
-                        r.status === "under_review" &&
-                        ["pending", "processing"].includes(r.audioProcessingStatus),
+                        r.status === "processing" ||
+                        (r.status === "under_review" &&
+                          ["pending", "processing"].includes(r.audioProcessingStatus)),
                     ).length,
                   ],
                   [
