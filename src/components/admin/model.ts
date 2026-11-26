@@ -29,6 +29,7 @@ export interface AdminTrack {
   releaseDate: string;
   features: string | null;
   producers: string | null;
+  lyrics?: string | null;
   processingAvailable?: boolean;
   audioProcessingStatus: string;
   recordingType?: string | null;
@@ -62,6 +63,7 @@ export interface AdminRelease {
   artistName: string;
   coverUrl: string;
   label: string | null;
+  description?: string | null;
   releaseDate: string;
   goLiveAt: string | null;
   status: string;

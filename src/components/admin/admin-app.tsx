@@ -47,7 +47,10 @@ import {
   Specs,
   Unavailable,
   Variants,
+  ReleaseAuditScorecard,
+  TrackAuditInspector,
 } from "./primitives";
+import { computeReleaseAudit, auditTrack } from "./audit";
 import {
   AdminOverview,
   AdminTelemetry,
@@ -656,7 +659,9 @@ export function AdminApp() {
                   </>
                 )}
                 {filter !== "verifications" &&
-                  reviews.map((r) => (
+                  reviews.map((r) => {
+                    const audit = computeReleaseAudit(r, data.tracks);
+                    return (
                     <section className="ad-panel ad-review" key={r.id}>
                       <div className="ad-review-heading">
                         <Artwork
@@ -684,7 +689,7 @@ export function AdminApp() {
                             <Link to="/admin/artists" hash={r.artistId}>
                               {r.artistName}
                             </Link>{" "}
-                            · {r.label || "Label not recorded"}
+                            · {r.label || "Independent (fallback)"}
                           </p>
                           <small>
                             Release date: {r.releaseDate} · Stored go-live: {kampala(r.goLiveAt)}{" "}
@@ -702,10 +707,15 @@ export function AdminApp() {
                           )}
                         </div>
                       </div>
+                      <ReleaseAuditScorecard audit={audit} />
                       {r.trackIds
                         .map((id) => data.tracks.find((t) => t.id === id))
                         .filter((t): t is AdminTrack => !!t)
-                        .map((t, i) => (
+                        .map((t, i) => {
+                          const trackAudit =
+                            audit.tracks.find((ta) => ta.trackId === t.id) ||
+                            auditTrack(t, i + 1, r);
+                          return (
                           <div className="ad-track" key={t.id}>
                             <div className="ad-track-heading">
                               <span className="ad-track-index">
@@ -758,8 +768,10 @@ export function AdminApp() {
                             <Specs track={t} />
                             <AudioPreview track={t} />
                             <Variants track={t} />
+                            <TrackAuditInspector trackAudit={trackAudit} track={t} />
                           </div>
-                        ))}
+                          );
+                        })}
                       {!r.trackIds.length && (
                         <Empty title="No linked tracks">
                           This release has no non-seed tracks recorded.
@@ -788,7 +800,8 @@ export function AdminApp() {
                         <span>Use the review actions above to record your decision.</span>
                       </div>
                     </section>
-                  ))}
+                    );
+                  })}
                 {filter !== "verifications" && !reviews.length && (
                   <Empty title="No submissions in this view">
                     The database returned no matching review submissions.

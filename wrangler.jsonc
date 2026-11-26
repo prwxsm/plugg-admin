@@ -6,7 +6,13 @@
   "workers_dev": true,
   "routes": [{ "pattern": "admin.plugg.site", "custom_domain": true }],
   "account_id": "d5547d92c5a59d24c06262c061fb9943",
-  "vars": { "PLUGG_BACKEND_ORIGIN": "https://plugg-92h9.onrender.com" },
+  "vars": { "PLUGG_BACKEND_ORIGIN": "https://plugg.prwxsm.workers.dev" },
+  "services": [
+    {
+      "binding": "PLUGG_BACKEND",
+      "service": "plugg"
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
