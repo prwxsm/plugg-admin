@@ -171,17 +171,18 @@ export interface AdminPlay {
   ipAddress: string | null;
   sessionLabel: string | null;
 }
+export type AdminAuditEntry = {
+  id: string;
+  actorName: string;
+  actorRole: string;
+  action: string;
+  targetId: string;
+  reason: string | null;
+  occurredAt: string;
+  result: string;
+};
 export interface AdminSnapshot {
-  audit: {
-    id: string;
-    actorName: string;
-    actorRole: string;
-    action: string;
-    targetId: string;
-    reason: string | null;
-    occurredAt: string;
-    result: string;
-  }[];
+  audit: AdminAuditEntry[];
   fetchedAt: string;
   currentUser: AdminIdentity;
   releases: AdminRelease[];

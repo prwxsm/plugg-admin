@@ -1,4 +1,3 @@
-import { retryAdminAudio } from "@/lib/api";
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -15,6 +14,9 @@ import {
 import type { AdminRelease, AdminTrack } from "./model";
 import { pendingHours, safeMediaUrl } from "./model";
 import type { AuditStatus, ReleaseAuditResult, TrackAuditResult } from "./audit";
+import { AdminDropdown, type AdminDropdownOption, type AdminDropdownProps } from "./dropdown";
+
+export { AdminDropdown, type AdminDropdownOption, type AdminDropdownProps };
 
 export function Pill({ children, tone = "" }: { children: ReactNode; tone?: string }) {
   return <span className={`ad-pill ${tone}`}>{children}</span>;
@@ -485,24 +487,23 @@ export function AudioPreview({ track }: { track: AdminTrack }) {
           }}
         />
         {hasVariants && (
-          <select
+          <AdminDropdown
+            size="sm"
             value={selectedUrl}
-            onChange={(e) => {
-              setSelectedUrl(e.target.value);
+            onChange={(url) => {
+              setSelectedUrl(url);
               setError(false);
               setPlaying(false);
             }}
-            className="text-[11px] bg-elevated/80 border border-border rounded px-2 py-1 text-foreground"
-            title="Inspect audio variant"
-            aria-label="Select audio variant to inspect"
-          >
-            <option value={track.audioUrl || ""}>Original Source</option>
-            {track.audioVariants.map((v) => (
-              <option key={v.name} value={v.url || ""}>
-                {v.name} ({v.format?.toUpperCase()} · {v.bitrateKbps}k)
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: track.audioUrl || "", label: "Original Master" },
+              ...track.audioVariants.map((v) => ({
+                value: v.url || "",
+                label: `${v.name}`,
+                badge: `${v.format?.toUpperCase()} · ${v.bitrateKbps}k`,
+              })),
+            ]}
+          />
         )}
       </div>
       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -524,7 +525,7 @@ export function Variants({ track }: { track: AdminTrack }) {
   const handleRetry = async () => {
     try {
       setRetrying(true);
-      
+      const { retryAdminAudio } = await import("@/lib/api");
       const res = await retryAdminAudio({ data: { trackId: track.id } });
       if (res.success) {
         window.location.reload();

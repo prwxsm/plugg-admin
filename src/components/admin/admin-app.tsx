@@ -22,6 +22,7 @@ import {
   Users,
   CalendarClock,
   ChartNoAxesCombined,
+  ClipboardList,
 } from "lucide-react";
 import { getAdminSnapshot, performAdminOperation } from "@/lib/api";
 import { loginUser, logoutUser } from "@/lib/api";
@@ -62,6 +63,8 @@ import "./admin.css";
 import { AdminBrand } from "./brand";
 import { ProfileCard, type ProfileCardData } from "./profile-card";
 import { AdminActions } from "./actions";
+import { AdminDropdown } from "./dropdown";
+import { AdminAuditLogView } from "./audit-log";
 const nav = [
   ["Overview", "/admin", LayoutDashboard],
   ["Review Queue", "/admin/review-queue", ShieldAlert],
@@ -75,6 +78,7 @@ const nav = [
   ["Streaming & Anti-Fraud", "/admin/telemetry", Activity],
   ["Analytics", "/admin/analytics", ChartNoAxesCombined],
   ["Staff & Access", "/admin/staff", ShieldCheck],
+  ["Audit Log", "/admin/audit", ClipboardList],
 ] as const;
 const subtitles: Record<string, string> = {
   Overview: "The pulse of your platform, from the existing Plugg database.",
@@ -92,6 +96,7 @@ const subtitles: Record<string, string> = {
   "Streaming & Anti-Fraud": "Recorded play events. No simulated traffic or invented fraud alerts.",
   Analytics: "Database aggregates and recorded play events, with their limits made visible.",
   "Staff & Access": "Role-based staff access and durable administrative audit history.",
+  "Audit Log": "Permanent immutable audit trail of all staff decisions, rights actions, and role updates.",
 };
 export function AdminApp() {
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -307,35 +312,38 @@ export function AdminApp() {
         </nav>
         <div className="ad-sidebar-bottom">
           <div className="ad-demo-note">
-            <LockKeyhole size={17} />
+            <LockKeyhole size={15} />
             <div>
               Role-protected administration<small>Authorized actions are audited</small>
             </div>
           </div>
-          <ProfileCard
-            compact
-            profile={data.currentUser}
-            actions={
-              <>
-                <button
-                  className="ad-btn"
-                  onClick={() =>
-                    setProfile({
-                      ...data.currentUser,
-                      joinedAt: data.currentUser.createdAt ?? null,
-                      status: "Signed in",
-                    })
-                  }
-                >
-                  My profile
-                </button>
-                <button className="ad-btn" aria-label="Sign out" onClick={() => void signOut()}>
-                  <LogOut size={14} />
-                  Sign out
-                </button>
-              </>
+          <button
+            type="button"
+            className="ad-sidebar-profile-trigger"
+            onClick={() =>
+              setProfile({
+                ...data.currentUser,
+                joinedAt: data.currentUser.createdAt ?? null,
+                status: "Signed in",
+              })
             }
-          />
+            title="Click to view staff profile and RBAC permissions"
+          >
+            <div className="ad-avatar">
+              {data.currentUser.name
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()}
+            </div>
+            <div className="ad-sidebar-profile-text">
+              <strong>{data.currentUser.name}</strong>
+              <small>{data.currentUser.role ? data.currentUser.role.replace("_", " ") : "staff"}</small>
+            </div>
+            <ChevronRight size={13} className="ad-sidebar-profile-chevron" />
+          </button>
         </div>
       </aside>
       <div className="ad-workspace">
@@ -372,14 +380,6 @@ export function AdminApp() {
               <RefreshCw size={14} className={loading ? "ad-spin" : ""} />
               {loading ? "Refreshing…" : "Refresh data"}
             </button>
-          </div>
-          <div className="ad-readonly-banner">
-            <LockKeyhole size={15} />
-            <span>
-              <b>Role-protected administration.</b> Existing records only; seeded records excluded.
-              Authorized actions require confirmation and are audited.
-            </span>
-            <Pill tone="green">RBAC</Pill>
           </div>
           <AdminActions key={page} data={data} page={page} refresh={refresh} />
           <div className="ad-data-meta">
@@ -427,27 +427,26 @@ export function AdminApp() {
                 />
               </label>
               {page === "Review Queue" ? (
-                <select
-                  aria-label="Submission sort order"
+                <AdminDropdown
                   value={newest ? "new" : "old"}
-                  onChange={(e) => setNewest(e.target.value === "new")}
-                >
-                  <option value="old">Oldest submission first</option>
-                  <option value="new">Newest submission first</option>
-                </select>
+                  onChange={(val) => setNewest(val === "new")}
+                  options={[
+                    { value: "old", label: "Oldest submission first" },
+                    { value: "new", label: "Newest submission first" },
+                  ]}
+                />
               ) : page === "Music Catalog" ? (
-                <select
-                  aria-label="Catalog status"
+                <AdminDropdown
                   value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                >
-                  <option value="all">All release statuses</option>
-                  {Object.entries(statusLabels).map(([key, title]) => (
-                    <option value={key} key={key}>
-                      {title}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFilter(val)}
+                  options={[
+                    { value: "all", label: "All release statuses" },
+                    ...Object.entries(statusLabels).map(([key, title]) => ({
+                      value: key,
+                      label: title,
+                    })),
+                  ]}
+                />
               ) : null}
             </div>
           )}
@@ -1358,6 +1357,7 @@ export function AdminApp() {
           {page === "Streaming & Anti-Fraud" && <AdminTelemetry data={data} />}
           {page === "Analytics" && <AdminAnalytics data={data} />}
           {page === "Staff & Access" && <AdminStaff data={data} />}
+          {page === "Audit Log" && <AdminAuditLogView data={data} />}
           <footer className="ad-footer">
             <span>
               <span className="ad-dot" />
@@ -1374,10 +1374,10 @@ export function AdminApp() {
           if (!open) setProfile(null);
         }}
       >
-        <DialogContent overlayClassName="ad-dialog-overlay" className="ad-dialog">
-          <DialogTitle>Profile</DialogTitle>
-          <DialogDescription>Account information from Plugg.</DialogDescription>
-          {profile && <ProfileCard profile={profile} />}
+        <DialogContent overlayClassName="ad-dialog-overlay" className="ad-dialog ad-profile-modal">
+          <DialogTitle>Staff Profile & Permissions</DialogTitle>
+          <DialogDescription>Account identity and role-based permissions in Plugg.</DialogDescription>
+          {profile && <ProfileCard profile={profile} onSignOut={() => void signOut()} />}
         </DialogContent>
       </Dialog>
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>

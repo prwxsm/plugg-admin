@@ -1,8 +1,31 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import {
+  AlertTriangle,
+  BadgeCheck,
+  Ban,
+  CalendarClock,
+  CheckCircle2,
+  FileCheck,
+  FileEdit,
+  Lock,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+  Unlock,
+  UserCheck,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { performAdminOperation, retryAdminAudio } from "@/lib/api";
 import { approveReleaseFn, requestChangesReleaseFn } from "@/lib/api";
 import type { AdminSnapshot } from "./model";
+import { AdminDropdown } from "./dropdown";
+
 type Action =
   | "retry_audio"
   | "approve"
@@ -23,6 +46,7 @@ type Action =
   | "staff_role"
   | "create_staff"
   | "edit_staff";
+
 const labels: Record<Action, string> = {
   retry_audio: "Retry failed audio",
   approve: "Approve release",
@@ -44,6 +68,51 @@ const labels: Record<Action, string> = {
   create_staff: "Create staff account",
   edit_staff: "Edit staff account",
 };
+
+const actionIcons: Record<Action, React.ComponentType<{ size?: number; className?: string }>> = {
+  retry_audio: RefreshCw,
+  approve: CheckCircle2,
+  request_changes: FileEdit,
+  reschedule: CalendarClock,
+  takedown: Ban,
+  reinstate: RotateCcw,
+  place_rights_hold: ShieldAlert,
+  release_rights_hold: ShieldCheck,
+  record_complaint: AlertTriangle,
+  update_complaint: FileCheck,
+  verify_artist: BadgeCheck,
+  edit_artist: FileEdit,
+  review_verification: UserCheck,
+  create_genre: Plus,
+  edit_genre: FileEdit,
+  delete_genre: Trash2,
+  staff_role: Shield,
+  create_staff: UserPlus,
+  edit_staff: Users,
+};
+
+const actionTones: Record<Action, "primary" | "amber" | "rose" | "emerald" | "blue" | "default"> = {
+  approve: "primary",
+  request_changes: "amber",
+  place_rights_hold: "rose",
+  release_rights_hold: "emerald",
+  review_verification: "blue",
+  takedown: "rose",
+  reinstate: "emerald",
+  reschedule: "default",
+  retry_audio: "default",
+  record_complaint: "amber",
+  update_complaint: "blue",
+  verify_artist: "blue",
+  edit_artist: "default",
+  create_genre: "default",
+  edit_genre: "default",
+  delete_genre: "rose",
+  staff_role: "blue",
+  create_staff: "default",
+  edit_staff: "default",
+};
+
 const pageActions: Record<string, Action[]> = {
   "Audio Processing": ["retry_audio"],
   "Review Queue": [
@@ -65,6 +134,7 @@ const pageActions: Record<string, Action[]> = {
   "Genre Taxonomy": ["create_genre", "edit_genre", "delete_genre"],
   "Staff & Access": ["create_staff", "staff_role", "edit_staff"],
 };
+
 export function AdminActions({
   data,
   page,
@@ -74,36 +144,36 @@ export function AdminActions({
   page: string;
   refresh: () => Promise<void>;
 }) {
-  const [action, setAction] = useState<Action | null>(null),
-    [targetId, setTargetId] = useState(""),
-    [reason, setReason] = useState(""),
-    [date, setDate] = useState(""),
-    [name, setName] = useState(""),
-    [slug, setSlug] = useState(""),
-    [image, setImage] = useState(""),
-    [bio, setBio] = useState(""),
-    [location, setLocation] = useState(""),
-    [role, setRole] = useState("moderator"),
-    [verified, setVerified] = useState(true),
-    [password, setPassword] = useState(""),
-    [email, setEmail] = useState(""),
-    [username, setUsername] = useState(""),
-    [initialPassword, setInitialPassword] = useState(""),
-    [complaintStatus, setComplaintStatus] = useState<
-      "received" | "under_investigation" | "resolved" | "dismissed"
-    >("received"),
-    [complainantName, setComplainantName] = useState(""),
-    [complainantEmail, setComplainantEmail] = useState(""),
-    [conflictNature, setConflictNature] = useState(""),
-    [evidenceNotes, setEvidenceNotes] = useState(""),
-    [resolutionNotes, setResolutionNotes] = useState(""),
-    [verificationDecision, setVerificationDecision] = useState<
-      "approved" | "rejected" | "more_info_required"
-    >("approved"),
-    [verificationFeedback, setVerificationFeedback] = useState(""),
-    [confirmed, setConfirmed] = useState(false),
-    [busy, setBusy] = useState(false),
-    [message, setMessage] = useState("");
+  const [action, setAction] = useState<Action | null>(null);
+  const [targetId, setTargetId] = useState("");
+  const [reason, setReason] = useState("");
+  const [date, setDate] = useState("");
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [image, setImage] = useState("");
+  const [bio, setBio] = useState("");
+  const [location, setLocation] = useState("");
+  const [role, setRole] = useState("moderator");
+  const [verified, setVerified] = useState(true);
+  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [initialPassword, setInitialPassword] = useState("");
+  const [complaintStatus, setComplaintStatus] = useState<
+    "received" | "under_investigation" | "resolved" | "dismissed"
+  >("received");
+  const [complainantName, setComplainantName] = useState("");
+  const [complainantEmail, setComplainantEmail] = useState("");
+  const [conflictNature, setConflictNature] = useState("");
+  const [evidenceNotes, setEvidenceNotes] = useState("");
+  const [resolutionNotes, setResolutionNotes] = useState("");
+  const [verificationDecision, setVerificationDecision] = useState<
+    "approved" | "rejected" | "more_info_required"
+  >("approved");
+  const [verificationFeedback, setVerificationFeedback] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
 
   const isModerator = data.currentUser.role === "moderator";
   const rawAllowed = (pageActions[page] || []).filter(
@@ -226,6 +296,7 @@ export function AdminActions({
     setConfirmed(false);
     setMessage("");
   };
+
   const selectTarget = (id: string) => {
     setTargetId(id);
     const user = data.users.find((u) => u.id === id);
@@ -254,6 +325,7 @@ export function AdminActions({
       setResolutionNotes(comp.resolutionNotes || "");
     }
   };
+
   const submit = async () => {
     if (!action || !confirmed || busy) return;
     setBusy(true);
@@ -262,11 +334,11 @@ export function AdminActions({
       if (action === "retry_audio") {
         const result = await retryAdminAudio({ data: { trackId: targetId } });
         if (!result.success) throw new Error(result.error);
-      } else if (action === "approve")
+      } else if (action === "approve") {
         await approveReleaseFn({ data: { releaseId: targetId, newReleaseDate: date } });
-      else if (action === "request_changes")
+      } else if (action === "request_changes") {
         await requestChangesReleaseFn({ data: { releaseId: targetId, feedback: reason } });
-      else {
+      } else {
         const fields: Record<string, unknown> = {
           action,
           targetId: ["create_genre", "create_staff"].includes(action) ? "new" : targetId,
@@ -325,16 +397,48 @@ export function AdminActions({
       setInitialPassword("");
     }
   };
+
   return (
-    <section className="ad-panel" style={{ padding: 16, marginBottom: 16 }}>
-      <div className="ad-dialog-actions">
-        {allowed.map((a) => (
-          <button key={a} className="ad-btn" onClick={() => open(a)}>
-            {labels[a]}
-          </button>
-        ))}
+    <section className="ad-action-bar">
+      {/* Desktop Action Buttons */}
+      <div className="ad-action-buttons-desktop">
+        {allowed.map((a) => {
+          const Icon = actionIcons[a];
+          const tone = actionTones[a];
+          return (
+            <button
+              key={a}
+              type="button"
+              className={`ad-action-btn tone-${tone}`}
+              onClick={() => open(a)}
+            >
+              {Icon && <Icon size={14} className="shrink-0" />}
+              <span>{labels[a]}</span>
+            </button>
+          );
+        })}
       </div>
-      {!action && message && <p role="status">{message}</p>}
+
+      {/* Mobile Action Dropdown */}
+      <div className="ad-action-buttons-mobile">
+        <AdminDropdown
+          value=""
+          placeholder={`Choose Action (${allowed.length})…`}
+          onChange={(val) => {
+            if (val) open(val as Action);
+          }}
+          options={allowed.map((a) => ({
+            value: a,
+            label: labels[a],
+            icon: actionIcons[a],
+          }))}
+          buttonClassName="ad-action-mobile-trigger"
+        />
+      </div>
+
+      {!action && message && <p className="ad-action-status-msg" role="status">{message}</p>}
+
+      {/* Action Form Modal */}
       <Dialog
         open={!!action}
         onOpenChange={(v) => {
@@ -345,12 +449,20 @@ export function AdminActions({
           }
         }}
       >
-        <DialogContent overlayClassName="ad-dialog-overlay" className="ad-dialog">
-          <DialogTitle>{action ? labels[action] : ""}</DialogTitle>
-          <DialogDescription>
-            Changes affect the existing Plugg database and are recorded with your account. Review
-            the target carefully.
-          </DialogDescription>
+        <DialogContent overlayClassName="ad-dialog-overlay" className="ad-dialog ad-action-modal">
+          <div className="ad-modal-header">
+            <div className="ad-modal-badge">
+              <span className={`ad-modal-badge-dot tone-${action ? actionTones[action] : "default"}`} />
+              <span>Plugg Administration</span>
+            </div>
+            <DialogTitle className="ad-modal-title">
+              {action ? labels[action] : ""}
+            </DialogTitle>
+            <DialogDescription className="ad-modal-description">
+              Changes affect live records in the existing Plugg database. All actions require confirmation and are durably audited.
+            </DialogDescription>
+          </div>
+
           <form
             className="ad-form"
             onSubmit={(e) => {
@@ -359,280 +471,414 @@ export function AdminActions({
             }}
           >
             {action !== "create_genre" && action !== "create_staff" && (
-              <label>
-                Target
-                <select required value={targetId} onChange={(e) => selectTarget(e.target.value)}>
-                  <option value="">Select an existing record</option>
-                  {targets.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="ad-form-field">
+                <span className="ad-form-label">Target Record</span>
+                <AdminDropdown
+                  fullWidth
+                  searchable={targets.length > 5}
+                  value={targetId}
+                  onChange={selectTarget}
+                  placeholder="Select an existing record…"
+                  options={targets.map((t) => ({
+                    value: t.id,
+                    label: t.label,
+                  }))}
+                />
+              </div>
             )}
+
             {(action === "approve" || action === "reschedule") && (
-              <label>
-                Future publication date (midnight Kampala)
+              <div className="ad-form-field">
+                <span className="ad-form-label">Future publication date (midnight Kampala)</span>
                 <input
                   required
                   type="date"
+                  className="ad-input"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
-              </label>
+                <span className="ad-field-hint">Publication takes effect at 00:00 Africa/Kampala (EAT) on the chosen date.</span>
+              </div>
             )}
+
             {(action === "create_genre" || action === "edit_genre" || action === "edit_artist") && (
-              <label>
-                Name
-                <input required value={name} onChange={(e) => setName(e.target.value)} />
-              </label>
+              <div className="ad-form-field">
+                <span className="ad-form-label">Name</span>
+                <input
+                  required
+                  className="ad-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
             )}
+
             {(action === "create_genre" || action === "edit_genre") && (
               <>
-                <label>
-                  Slug
-                  <input required value={slug} onChange={(e) => setSlug(e.target.value)} />
-                </label>
-                <label>
-                  Artwork URL
-                  <input value={image} onChange={(e) => setImage(e.target.value)} />
-                </label>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Slug</span>
+                  <input
+                    required
+                    className="ad-input"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                  />
+                </div>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Artwork URL</span>
+                  <input
+                    className="ad-input"
+                    placeholder="https://…"
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                  />
+                </div>
               </>
             )}
+
             {action === "edit_artist" && (
               <>
-                <label>
-                  Location
-                  <input value={location} onChange={(e) => setLocation(e.target.value)} />
-                </label>
-                <label>
-                  New biography (blank leaves unchanged)
-                  <textarea value={bio} onChange={(e) => setBio(e.target.value)} />
-                </label>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Location</span>
+                  <input
+                    className="ad-input"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                  />
+                </div>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Biography (leave blank to keep unchanged)</span>
+                  <textarea
+                    className="ad-textarea"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                  />
+                </div>
               </>
             )}
+
             {action === "verify_artist" && (
-              <>
-                <p>
-                  This records a platform verification decision; it does not perform an identity
-                  check.
-                </p>
-                <label>
+              <div className="ad-form-field">
+                <span className="ad-field-hint">
+                  Records a platform verification badge. Does not replace external legal checks.
+                </span>
+                <label className="ad-checkbox-label">
                   <input
                     type="checkbox"
+                    className="ad-checkbox"
                     checked={verified}
                     onChange={(e) => setVerified(e.target.checked)}
-                  />{" "}
-                  Verified artist
+                  />
+                  <span>Platform Verified Artist Badge</span>
                 </label>
-              </>
+              </div>
             )}
+
             {action === "review_verification" && (
               <>
-                <label>
-                  Verification Decision
-                  <select
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Verification Decision</span>
+                  <AdminDropdown
+                    fullWidth
                     value={verificationDecision}
-                    onChange={(e) => setVerificationDecision(e.target.value as any)}
-                  >
-                    <option value="approved">Approve & Verify (Grants verified badge)</option>
-                    <option value="more_info_required">Request More Information</option>
-                    <option value="rejected">Decline / Reject Application</option>
-                  </select>
-                </label>
+                    onChange={(v) => setVerificationDecision(v as any)}
+                    options={[
+                      {
+                        value: "approved",
+                        label: "Approve & Verify (Grants badge)",
+                        tone: "green",
+                        icon: CheckCircle2,
+                      },
+                      {
+                        value: "more_info_required",
+                        label: "Request More Information",
+                        tone: "amber",
+                        icon: FileEdit,
+                      },
+                      {
+                        value: "rejected",
+                        label: "Decline / Reject Application",
+                        tone: "red",
+                        icon: Ban,
+                      },
+                    ]}
+                  />
+                </div>
                 {(verificationDecision === "more_info_required" ||
                   verificationDecision === "rejected") && (
-                  <label>
-                    Feedback / Reason for Artist *
+                  <div className="ad-form-field">
+                    <span className="ad-form-label">Feedback / Reason for Artist *</span>
                     <textarea
                       required
                       rows={3}
+                      className="ad-textarea"
                       value={verificationFeedback}
                       onChange={(e) => setVerificationFeedback(e.target.value)}
-                      placeholder="Specify what additional information, links, or documentation are required..."
+                      placeholder="Specify what additional documentation, links, or clarification are required…"
                     />
-                  </label>
+                  </div>
                 )}
               </>
             )}
+
             {["staff_role", "create_staff", "edit_staff"].includes(action || "") && (
               <>
                 {action !== "staff_role" && (
                   <>
-                    <label>
-                      Full name
-                      <input required value={name} onChange={(e) => setName(e.target.value)} />
-                    </label>
-                    <label>
-                      Username
+                    <div className="ad-form-field">
+                      <span className="ad-form-label">Full Name</span>
+                      <input
+                        required
+                        className="ad-input"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                    </div>
+                    <div className="ad-form-field">
+                      <span className="ad-form-label">Username</span>
                       <input
                         required
                         pattern="[a-z0-9_-]{3,30}"
                         autoComplete="off"
+                        className="ad-input"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                       />
-                    </label>
-                    <label>
-                      Email
+                    </div>
+                    <div className="ad-form-field">
+                      <span className="ad-form-label">Email Address</span>
                       <input
                         required
                         type="email"
+                        className="ad-input"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                       />
-                    </label>
+                    </div>
                   </>
                 )}
                 {action === "create_staff" && (
-                  <>
-                    <label>
-                      Initial password
-                      <input
-                        required
-                        type="password"
-                        minLength={12}
-                        maxLength={72}
-                        autoComplete="new-password"
-                        value={initialPassword}
-                        onChange={(e) => setInitialPassword(e.target.value)}
-                      />
-                    </label>
-                    <p>
-                      Use at least 12 characters. Share credentials privately with the staff member.
-                      No email is sent; they can change the password after signing in.
-                    </p>
-                  </>
+                  <div className="ad-form-field">
+                    <span className="ad-form-label">Initial Temporary Password</span>
+                    <input
+                      required
+                      type="password"
+                      minLength={12}
+                      maxLength={72}
+                      autoComplete="new-password"
+                      className="ad-input"
+                      value={initialPassword}
+                      onChange={(e) => setInitialPassword(e.target.value)}
+                    />
+                    <span className="ad-field-hint">
+                      At least 12 characters. Share credentials securely with the staff member.
+                    </span>
+                  </div>
                 )}
                 {action !== "edit_staff" && (
-                  <label>
-                    Access
-                    <select value={role} onChange={(e) => setRole(e.target.value)}>
-                      <option value="moderator">Moderator</option>
-                      <option value="admin">Admin</option>
-                      {action === "staff_role" && <option value="none">Revoke staff access</option>}
-                    </select>
-                  </label>
+                  <div className="ad-form-field">
+                    <span className="ad-form-label">RBAC Access Level</span>
+                    <AdminDropdown
+                      fullWidth
+                      value={role}
+                      onChange={setRole}
+                      options={[
+                        {
+                          value: "moderator",
+                          label: "Moderator",
+                          sublabel: "Can inspect review queue and audio checks",
+                        },
+                        {
+                          value: "admin",
+                          label: "Admin",
+                          sublabel: "Full release, catalog and rights management",
+                        },
+                        ...(action === "staff_role"
+                          ? [
+                              {
+                                value: "none",
+                                label: "Revoke Staff Access",
+                                tone: "red" as const,
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
+                  </div>
                 )}
-                <label>
-                  Your current password
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Your Current Password (re-authentication)</span>
                   <input
                     required
                     type="password"
                     autoComplete="current-password"
+                    className="ad-input"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
-                </label>
+                </div>
               </>
             )}
+
             {action === "record_complaint" && (
               <>
-                <label>
-                  Complainant name
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Complainant Name</span>
                   <input
                     required
+                    className="ad-input"
                     value={complainantName}
                     onChange={(e) => setComplainantName(e.target.value)}
                     placeholder="Rights holder or claimant name"
                   />
-                </label>
-                <label>
-                  Complainant email (stored privately)
+                </div>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Complainant Email (stored privately)</span>
                   <input
                     required
                     type="email"
+                    className="ad-input"
                     value={complainantEmail}
                     onChange={(e) => setComplainantEmail(e.target.value)}
                     placeholder="claimant@example.com"
                   />
-                </label>
-                <label>
-                  Nature of reported conflict
+                </div>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Nature of Reported Conflict</span>
                   <textarea
                     required
+                    className="ad-textarea"
                     value={conflictNature}
                     onChange={(e) => setConflictNature(e.target.value)}
-                    placeholder="Unauthorized master re-upload, uncleared beat/sample, cover without mechanical license, etc."
+                    placeholder="Unauthorized master re-upload, uncleared beat/sample, cover without license…"
                   />
-                </label>
-                <label>
-                  Supporting evidence references (optional)
+                </div>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Supporting Evidence References (optional)</span>
                   <textarea
+                    className="ad-textarea"
                     value={evidenceNotes}
                     onChange={(e) => setEvidenceNotes(e.target.value)}
-                    placeholder="Links to original catalog release, registration identifiers, timestamp proof, etc."
+                    placeholder="Links to original catalog release, registration identifiers, timestamp proof…"
                   />
-                </label>
-                <label>
-                  Case status
-                  <select
+                </div>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Case Status</span>
+                  <AdminDropdown
+                    fullWidth
                     value={complaintStatus}
-                    onChange={(e) => setComplaintStatus(e.target.value as any)}
-                  >
-                    <option value="received">Received</option>
-                    <option value="under_investigation">Under Investigation</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="dismissed">Dismissed</option>
-                  </select>
-                </label>
+                    onChange={(v) => setComplaintStatus(v as any)}
+                    options={[
+                      { value: "received", label: "Received", tone: "amber" },
+                      { value: "under_investigation", label: "Under Investigation", tone: "blue" },
+                      { value: "resolved", label: "Resolved", tone: "green" },
+                      { value: "dismissed", label: "Dismissed", tone: "default" },
+                    ]}
+                  />
+                </div>
               </>
             )}
+
             {action === "update_complaint" && (
               <>
-                <label>
-                  Updated case status
-                  <select
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Updated Case Status</span>
+                  <AdminDropdown
+                    fullWidth
                     value={complaintStatus}
-                    onChange={(e) => setComplaintStatus(e.target.value as any)}
-                  >
-                    <option value="received">Received</option>
-                    <option value="under_investigation">Under Investigation</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="dismissed">Dismissed</option>
-                  </select>
-                </label>
-                <label>
-                  Resolution & decision notes
+                    onChange={(v) => setComplaintStatus(v as any)}
+                    options={[
+                      { value: "received", label: "Received", tone: "amber" },
+                      { value: "under_investigation", label: "Under Investigation", tone: "blue" },
+                      { value: "resolved", label: "Resolved", tone: "green" },
+                      { value: "dismissed", label: "Dismissed", tone: "default" },
+                    ]}
+                  />
+                </div>
+                <div className="ad-form-field">
+                  <span className="ad-form-label">Resolution & Decision Notes</span>
                   <textarea
                     required
+                    className="ad-textarea"
                     value={resolutionNotes}
                     onChange={(e) => setResolutionNotes(e.target.value)}
-                    placeholder="Findings of investigation, rights documentation verified, or reason for dismissal/reinstatement."
+                    placeholder="Findings of investigation, rights documentation verified, or reason for dismissal…"
                   />
-                </label>
+                </div>
               </>
             )}
+
             {action !== "approve" && action !== "retry_audio" && action !== "update_complaint" && (
-              <label>
-                {action === "request_changes"
-                  ? "Required artist feedback"
-                  : action === "record_complaint"
-                    ? "Initial internal notes"
-                    : action === "place_rights_hold"
-                      ? "Hold reason (visible to artist)"
-                      : "Required reason"}
-                <textarea required value={reason} onChange={(e) => setReason(e.target.value)} />
-              </label>
+              <div className="ad-form-field">
+                <span className="ad-form-label">
+                  {action === "request_changes"
+                    ? "Required Artist Feedback / Corrections"
+                    : action === "record_complaint"
+                      ? "Initial Internal Notes"
+                      : action === "place_rights_hold"
+                        ? "Hold Reason (visible to artist)"
+                        : "Required Reason / Justification"}
+                </span>
+                <textarea
+                  required
+                  className="ad-textarea"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Detail the rationale for this administrative action…"
+                />
+              </div>
             )}
-            <label>
-              <input
-                required
-                type="checkbox"
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-              />{" "}
-              I confirm this action on the selected record
-              {["staff_role", "create_staff", "edit_staff"].includes(action || "")
-                ? " and have verified the intended staff account"
-                : ""}
-              .
-            </label>
-            {message && <p role="alert">{message}</p>}
-            <button className="ad-btn ad-btn-primary" disabled={busy || !confirmed} type="submit">
-              {busy ? "Saving…" : "Confirm and save"}
-            </button>
+
+            <div className="ad-form-confirmation">
+              <label className="ad-checkbox-label">
+                <input
+                  required
+                  type="checkbox"
+                  className="ad-checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                />
+                <span className="ad-checkbox-text">
+                  I confirm this action on the selected record
+                  {["staff_role", "create_staff", "edit_staff"].includes(action || "")
+                    ? " and have verified the intended staff account"
+                    : ""}
+                  .
+                </span>
+              </label>
+            </div>
+
+            {message && (
+              <div className="ad-form-alert" role="alert">
+                <AlertTriangle size={14} className="shrink-0" />
+                <span>{message}</span>
+              </div>
+            )}
+
+            <div className="ad-form-actions">
+              <button
+                type="button"
+                className="ad-btn ad-btn-secondary"
+                onClick={() => setAction(null)}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button
+                className="ad-btn ad-btn-primary ad-confirm-btn"
+                disabled={busy || !confirmed || (action !== "create_genre" && action !== "create_staff" && !targetId)}
+                type="submit"
+              >
+                {busy ? (
+                  <>
+                    <RefreshCw size={13} className="ad-spin mr-1.5" />
+                    Saving…
+                  </>
+                ) : (
+                  "Confirm and save"
+                )}
+              </button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
