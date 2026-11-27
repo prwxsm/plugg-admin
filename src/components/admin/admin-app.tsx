@@ -78,6 +78,7 @@ import {
 import "./admin.css";
 import { AdminBrand } from "./brand";
 import { ProfileCard, type ProfileCardData } from "./profile-card";
+import { AdminProfilePage } from "./profile-page";
 import { AdminActions } from "./actions";
 import { AdminDropdown } from "./dropdown";
 import { AdminAuditLogView } from "./audit-log";
@@ -90,7 +91,6 @@ const nav = [
   ["Artist Directory", "/admin/artists", Users],
   ["Genre Taxonomy", "/admin/genres", Tags],
   ["Users", "/admin/users", Users],
-  ["Audio Processing", "/admin/processing", AudioLines],
   ["Streaming & Anti-Fraud", "/admin/telemetry", Activity],
   ["Analytics", "/admin/analytics", ChartNoAxesCombined],
   ["Staff & Access", "/admin/staff", ShieldCheck],
@@ -108,6 +108,8 @@ const subtitles: Record<string, string> = {
   "Artist Directory": "Existing artist accounts, identity details and recorded verification.",
   "Genre Taxonomy": "Current discovery taxonomy and matching catalog counts.",
   Users: "Existing Plugg accounts and their database permissions.",
+  Profile:
+    "Account identity, role-based access control (RBAC), and active session details.",
   "Audio Processing": "Recorded processing state and stored variant metadata.",
   "Streaming & Anti-Fraud": "Recorded play events. No simulated traffic or invented fraud alerts.",
   Analytics: "Database aggregates and recorded play events, with their limits made visible.",
@@ -170,10 +172,13 @@ function CollapsibleReviewHistory({ releases }: { releases: AdminRelease[] }) {
 
 export function AdminApp() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const page = nav.find((n) => n[1] === path.replace(/\/$/, ""))?.[0] || "Overview";
+  const cleanPath = path.replace(/\/$/, "");
+  const page =
+    cleanPath === "/admin/profile"
+      ? "Profile"
+      : nav.find((n) => n[1] === cleanPath)?.[0] || "Overview";
   const [result, setResult] = useState<AdminResult | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<ProfileCardData | null>(null);
   const [mobile, setMobile] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -373,50 +378,7 @@ export function AdminApp() {
       )}
       <aside
         className={`ad-sidebar ${mobile ? "open" : ""} ${collapsed ? "collapsed" : ""}`}
-        onClick={(e) => {
-          if (
-            collapsed &&
-            (e.target === e.currentTarget ||
-              (e.target as HTMLElement).classList.contains("ad-sidebar-header") ||
-              (e.target as HTMLElement).classList.contains("ad-sidebar-bottom") ||
-              (e.target as HTMLElement).classList.contains("ad-nav-list"))
-          ) {
-            setCollapsed(false);
-            if (typeof window !== "undefined") {
-              localStorage.setItem("plugg_admin_sidebar_collapsed", "false");
-            }
-          }
-        }}
       >
-        {/* Expand Rail on Collapsed Panel Boundary with Expand Cursor */}
-        {collapsed && (
-          <div
-            className="ad-sidebar-expand-rail"
-            onClick={(e) => {
-              e.stopPropagation();
-              setCollapsed(false);
-              if (typeof window !== "undefined") {
-                localStorage.setItem("plugg_admin_sidebar_collapsed", "false");
-              }
-            }}
-            title="Click to expand sidebar"
-            aria-label="Click to expand sidebar"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                setCollapsed(false);
-                if (typeof window !== "undefined") {
-                  localStorage.setItem("plugg_admin_sidebar_collapsed", "false");
-                }
-              }
-            }}
-          >
-            <span className="ad-expand-pill" aria-hidden="true">
-              <ChevronsRight size={13} />
-            </span>
-          </div>
-        )}
 
         <div className="ad-sidebar-header">
           <Link
@@ -504,21 +466,14 @@ export function AdminApp() {
               </div>
             </div>
           )}
-          <button
-            type="button"
-            className="ad-sidebar-profile-trigger"
-            onClick={(e) => {
-              e.stopPropagation();
-              setProfile({
-                ...data.currentUser,
-                joinedAt: data.currentUser.createdAt ?? null,
-                status: "Signed in",
-              });
-            }}
+          <Link
+            to="/admin/profile"
+            className={`ad-sidebar-profile-trigger ${page === "Profile" ? "active" : ""}`}
+            onClick={() => mobile && setMobile(false)}
             title={
               collapsed
                 ? `${data.currentUser.name} (${data.currentUser.role ? data.currentUser.role.replace("_", " ") : "staff"})`
-                : "Click to view staff profile and RBAC permissions"
+                : "View staff profile and RBAC permissions"
             }
             data-tooltip={
               collapsed
@@ -548,7 +503,7 @@ export function AdminApp() {
                 <ChevronRight size={13} className="ad-sidebar-profile-chevron" />
               </>
             )}
-          </button>
+          </Link>
         </div>
       </aside>
       <div className="ad-workspace">
@@ -572,7 +527,7 @@ export function AdminApp() {
             </button>
             <span>Workspace</span>
             <ChevronRight size={14} />
-            <strong>{page}</strong>
+            <strong>{page === "Profile" ? "Staff Profile" : page}</strong>
           </div>
           <div>
             <span className="ad-system">
@@ -587,7 +542,7 @@ export function AdminApp() {
           <div className="ad-page-heading">
             <div>
               <div className="ad-eyebrow">PLUGG CONTROL CENTER</div>
-              <h1>{page === "Overview" ? "Platform overview" : page}</h1>
+              <h1>{page === "Overview" ? "Platform overview" : page === "Profile" ? "Staff Profile & Permissions" : page}</h1>
               <p>{subtitles[page]}</p>
             </div>
             <button className="ad-btn" onClick={() => void refresh()} disabled={loading}>
@@ -595,7 +550,7 @@ export function AdminApp() {
               {loading ? "Refreshing…" : "Refresh data"}
             </button>
           </div>
-          <AdminActions key={page} data={data} page={page} refresh={refresh} />
+          {page !== "Profile" && <AdminActions key={page} data={data} page={page} refresh={refresh} />}
           <div className="ad-data-meta">
             <span>Snapshot: {kampala(data.fetchedAt)} EAT</span>
             <label>
@@ -1576,23 +1531,7 @@ export function AdminApp() {
                       {users.map((u) => (
                         <tr key={u.id}>
                           <td>
-                            <button
-                              className="ad-profile-link"
-                              onClick={() =>
-                                setProfile({
-                                  ...u,
-                                  role: u.adminActive ? u.adminRole : u.accountType,
-                                  joinedAt: u.createdAt,
-                                  status: u.adminRole
-                                    ? u.adminActive
-                                      ? "Staff active"
-                                      : "Revoked"
-                                    : "No staff access",
-                                })
-                              }
-                            >
-                              {u.name}
-                            </button>
+                            <strong>{u.name}</strong>
                             <small className="ad-block">
                               {u.username ? `@${u.username}` : "Handle not recorded"}
                             </small>
@@ -1613,7 +1552,6 @@ export function AdminApp() {
               </section>
             </>
           )}
-          {page === "Audio Processing" && <AdminProcessing data={data} inspect={setDetail} />}
           {page === "Streaming & Anti-Fraud" && <AdminTelemetry data={data} />}
           {page === "Analytics" && <AdminAnalytics data={data} />}
           {page === "Staff & Access" && <AdminStaff data={data} />}
@@ -1623,6 +1561,12 @@ export function AdminApp() {
             ) : (
               <Empty title="Access restricted" />
             ))}
+          {page === "Profile" && (
+            <AdminProfilePage
+              currentUser={data.currentUser}
+              onSignOut={() => void signOut()}
+            />
+          )}
           <footer className="ad-footer">
             <span>
               <span className="ad-dot" />
@@ -1633,18 +1577,6 @@ export function AdminApp() {
         </main>
         <Outlet />
       </div>
-      <Dialog
-        open={!!profile}
-        onOpenChange={(open) => {
-          if (!open) setProfile(null);
-        }}
-      >
-        <DialogContent overlayClassName="ad-dialog-overlay" className="ad-dialog ad-profile-modal">
-          <DialogTitle>Staff Profile & Permissions</DialogTitle>
-          <DialogDescription>Account identity and role-based permissions in Plugg.</DialogDescription>
-          {profile && <ProfileCard profile={profile} onSignOut={() => void signOut()} />}
-        </DialogContent>
-      </Dialog>
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
         <DialogContent overlayClassName="ad-dialog-overlay" className="ad-dialog ad-app">
           <DialogTitle>{detail?.title || "Track details"}</DialogTitle>

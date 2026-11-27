@@ -8,7 +8,7 @@ export function AdminBrand({ markOnly }: { markOnly?: boolean } = {}) {
           src="/admin/plugg-logo.png"
           alt="Plugg"
           width={32}
-          height={31}
+          height={32}
         />
       </span>
       {!markOnly && (
