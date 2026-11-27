@@ -328,26 +328,6 @@ export function AdminProcessing({
       <section className="ad-panel ad-audit">
         <div className="ad-panel-head">
           <div>
-            <h2>Administrative audit log</h2>
-            <p>
-              Latest 200 durable events. Successful changes and their audit records commit together.
-            </p>
-          </div>
-        </div>
-        {data.audit.map((a) => (
-          <div className="ad-log" key={a.id}>
-            <time>{kampala(a.occurredAt)}</time>
-            <p>
-              {a.actorName} ({a.actorRole}) · {a.action} · {a.targetId} · {a.result}
-              {a.reason ? ` — ${a.reason}` : ""}
-            </p>
-          </div>
-        ))}
-        {!data.audit.length && <Empty title="No administrative events" />}
-      </section>
-      <section className="ad-panel ad-audit">
-        <div className="ad-panel-head">
-          <div>
             <h2>Stored file metadata</h2>
             <p>Grouped by upload category and recorded status; files are not modified.</p>
           </div>
@@ -499,26 +479,6 @@ export function AdminAnalytics({ data }: { data: AdminSnapshot }) {
       <section className="ad-panel ad-audit">
         <div className="ad-panel-head">
           <div>
-            <h2>Administrative audit log</h2>
-            <p>
-              Latest 200 durable events. Successful changes and their audit records commit together.
-            </p>
-          </div>
-        </div>
-        {data.audit.map((a) => (
-          <div className="ad-log" key={a.id}>
-            <time>{kampala(a.occurredAt)}</time>
-            <p>
-              {a.actorName} ({a.actorRole}) · {a.action} · {a.targetId} · {a.result}
-              {a.reason ? ` — ${a.reason}` : ""}
-            </p>
-          </div>
-        ))}
-        {!data.audit.length && <Empty title="No administrative events" />}
-      </section>
-      <section className="ad-panel ad-audit">
-        <div className="ad-panel-head">
-          <div>
             <h2>Tracks by stored play count</h2>
             <p>Highest stored counters among loaded non-seed tracks.</p>
           </div>
@@ -593,26 +553,6 @@ export function AdminStaff({ data }: { data: AdminSnapshot }) {
           ))}
         </div>
         {!staff.length && <Empty />}
-      </section>
-      <section className="ad-panel ad-audit">
-        <div className="ad-panel-head">
-          <div>
-            <h2>Administrative audit log</h2>
-            <p>
-              Latest 200 durable events. Successful changes and their audit records commit together.
-            </p>
-          </div>
-        </div>
-        {data.audit.map((a) => (
-          <div className="ad-log" key={a.id}>
-            <time>{kampala(a.occurredAt)}</time>
-            <p>
-              {a.actorName} ({a.actorRole}) · {a.action} · {a.targetId} · {a.result}
-              {a.reason ? ` — ${a.reason}` : ""}
-            </p>
-          </div>
-        ))}
-        {!data.audit.length && <Empty title="No administrative events" />}
       </section>
       <section className="ad-panel ad-audit">
         <div className="ad-panel-head">

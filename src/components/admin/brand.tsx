@@ -1,5 +1,5 @@
 /** Official Plugg artwork, shared by the admin shell and authentication states. */
-export function AdminBrand() {
+export function AdminBrand({ markOnly }: { markOnly?: boolean } = {}) {
   return (
     <span className="ad-brand-lockup">
       <span className="ad-logo-tile">
@@ -11,11 +11,16 @@ export function AdminBrand() {
           height={31}
         />
       </span>
-      <span className="ad-wordmark" aria-hidden="true">
-        plugg
-      </span>
-      <span className="ad-brand-divider" />
-      <span className="ad-brand-caption">Admin</span>
+      {!markOnly && (
+        <>
+          <span className="ad-wordmark" aria-hidden="true">
+            plugg
+          </span>
+          <span className="ad-brand-divider" />
+          <span className="ad-brand-caption">Admin</span>
+        </>
+      )}
     </span>
   );
 }
+

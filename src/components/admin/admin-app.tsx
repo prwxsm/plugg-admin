@@ -23,6 +23,17 @@ import {
   CalendarClock,
   ChartNoAxesCombined,
   ClipboardList,
+  Play,
+  Download,
+  Heart,
+  Eye,
+  EyeOff,
+  Lock,
+  User,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ChevronsRight,
+  ChevronsLeft,
 } from "lucide-react";
 import { getAdminSnapshot, performAdminOperation } from "@/lib/api";
 import { loginUser, logoutUser } from "@/lib/api";
@@ -33,6 +44,7 @@ import {
   kampala,
   pendingHours,
   statusLabels,
+  formatMetricCount,
   type AdminResult,
   type AdminSnapshot,
   type AdminTrack,
@@ -105,6 +117,22 @@ export function AdminApp() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileCardData | null>(null);
   const [mobile, setMobile] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("plugg_admin_sidebar_collapsed") === "true";
+    }
+    return false;
+  });
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("plugg_admin_sidebar_collapsed", String(next));
+      }
+      return next;
+    });
+  };
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
@@ -276,18 +304,104 @@ export function AdminApp() {
     }
   };
   return (
-    <div className="ad-app ad-real">
-      <aside className={`ad-sidebar ${mobile ? "open" : ""}`}>
-        <Link to="/admin" className="ad-brand">
-          <AdminBrand />
-        </Link>
-        <p className="ad-staff-label">STAFF BACK-OFFICE</p>
-        <div className="ad-environment">
-          <span className="ad-dot" />
-          Existing PostgreSQL<small>Africa/Kampala (UTC+03:00)</small>
+    <div className={`ad-app ad-real ${collapsed ? "ad-collapsed" : ""}`}>
+      {/* Mobile Drawer Backdrop */}
+      {mobile && (
+        <div
+          className="ad-sidebar-backdrop"
+          onClick={() => setMobile(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`ad-sidebar ${mobile ? "open" : ""} ${collapsed ? "collapsed" : ""}`}
+        onClick={(e) => {
+          if (
+            collapsed &&
+            (e.target === e.currentTarget ||
+              (e.target as HTMLElement).classList.contains("ad-sidebar-header") ||
+              (e.target as HTMLElement).classList.contains("ad-sidebar-bottom") ||
+              (e.target as HTMLElement).classList.contains("ad-nav-list"))
+          ) {
+            setCollapsed(false);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("plugg_admin_sidebar_collapsed", "false");
+            }
+          }
+        }}
+      >
+        {/* Expand Rail on Collapsed Panel Boundary with Expand Cursor */}
+        {collapsed && (
+          <div
+            className="ad-sidebar-expand-rail"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCollapsed(false);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("plugg_admin_sidebar_collapsed", "false");
+              }
+            }}
+            title="Click to expand sidebar"
+            aria-label="Click to expand sidebar"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                setCollapsed(false);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("plugg_admin_sidebar_collapsed", "false");
+                }
+              }
+            }}
+          >
+            <span className="ad-expand-pill" aria-hidden="true">
+              <ChevronsRight size={13} />
+            </span>
+          </div>
+        )}
+
+        <div className="ad-sidebar-header">
+          <Link
+            to="/admin"
+            className="ad-brand"
+            title="Plugg Admin"
+            onClick={() => mobile && setMobile(false)}
+          >
+            <AdminBrand markOnly={collapsed} />
+          </Link>
+          <button
+            type="button"
+            className="ad-sidebar-toggle-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleCollapsed();
+            }}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
-        <div className="ad-nav-label">WORKSPACE</div>
-        <nav aria-label="Admin navigation">
+
+        {!collapsed && <p className="ad-staff-label">STAFF BACK-OFFICE</p>}
+
+        <div
+          className="ad-environment"
+          title="Existing PostgreSQL · Africa/Kampala (UTC+03:00)"
+        >
+          <span className="ad-dot" />
+          {!collapsed ? (
+            <>
+              Existing PostgreSQL<small>Africa/Kampala (UTC+03:00)</small>
+            </>
+          ) : (
+            <span className="sr-only">Existing PostgreSQL</span>
+          )}
+        </div>
+
+        {!collapsed && <div className="ad-nav-label">WORKSPACE</div>}
+
+        <nav aria-label="Admin navigation" className="ad-nav-list">
           {nav
             .filter(
               ([name]) =>
@@ -296,38 +410,63 @@ export function AdminApp() {
                   ? ["Overview", "Review Queue", "Copyright & Complaints"].includes(name)
                   : !["Users", "Staff & Access"].includes(name)),
             )
-            .map(([name, to, Icon]) => (
-              <Link
-                key={to}
-                to={to}
-                activeOptions={{ exact: true }}
-                className={`ad-nav-link ${page === name ? "active" : ""}`}
-                aria-current={page === name ? "page" : undefined}
-              >
-                <Icon size={17} />
-                <span>{name}</span>
-                {name === "Review Queue" && <b>{m.pending + (m.pendingVerifications || 0)}</b>}
-              </Link>
-            ))}
+            .map(([name, to, Icon]) => {
+              const pendingCount =
+                name === "Review Queue" ? m.pending + (m.pendingVerifications || 0) : 0;
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  activeOptions={{ exact: true }}
+                  className={`ad-nav-link ${page === name ? "active" : ""}`}
+                  aria-current={page === name ? "page" : undefined}
+                  data-tooltip={name}
+                  title={collapsed ? name : undefined}
+                  onClick={() => mobile && setMobile(false)}
+                >
+                  <div className="ad-nav-icon-wrap">
+                    <Icon size={17} className="ad-nav-icon" />
+                    {collapsed && pendingCount > 0 && (
+                      <span className="ad-nav-badge-dot">{pendingCount}</span>
+                    )}
+                  </div>
+                  {!collapsed && <span>{name}</span>}
+                  {!collapsed && pendingCount > 0 && <b>{pendingCount}</b>}
+                </Link>
+              );
+            })}
         </nav>
+
         <div className="ad-sidebar-bottom">
-          <div className="ad-demo-note">
-            <LockKeyhole size={15} />
-            <div>
-              Role-protected administration<small>Authorized actions are audited</small>
+          {!collapsed && (
+            <div className="ad-demo-note">
+              <LockKeyhole size={15} />
+              <div>
+                Role-protected administration<small>Authorized actions are audited</small>
+              </div>
             </div>
-          </div>
+          )}
           <button
             type="button"
             className="ad-sidebar-profile-trigger"
-            onClick={() =>
+            onClick={(e) => {
+              e.stopPropagation();
               setProfile({
                 ...data.currentUser,
                 joinedAt: data.currentUser.createdAt ?? null,
                 status: "Signed in",
-              })
+              });
+            }}
+            title={
+              collapsed
+                ? `${data.currentUser.name} (${data.currentUser.role ? data.currentUser.role.replace("_", " ") : "staff"})`
+                : "Click to view staff profile and RBAC permissions"
             }
-            title="Click to view staff profile and RBAC permissions"
+            data-tooltip={
+              collapsed
+                ? `${data.currentUser.name} (${data.currentUser.role ? data.currentUser.role.replace("_", " ") : "staff"})`
+                : undefined
+            }
           >
             <div className="ad-avatar">
               {data.currentUser.name
@@ -338,11 +477,19 @@ export function AdminApp() {
                 .join("")
                 .toUpperCase()}
             </div>
-            <div className="ad-sidebar-profile-text">
-              <strong>{data.currentUser.name}</strong>
-              <small>{data.currentUser.role ? data.currentUser.role.replace("_", " ") : "staff"}</small>
-            </div>
-            <ChevronRight size={13} className="ad-sidebar-profile-chevron" />
+            {!collapsed && (
+              <>
+                <div className="ad-sidebar-profile-text">
+                  <strong>{data.currentUser.name}</strong>
+                  <small>
+                    {data.currentUser.role
+                      ? data.currentUser.role.replace("_", " ")
+                      : "staff"}
+                  </small>
+                </div>
+                <ChevronRight size={13} className="ad-sidebar-profile-chevron" />
+              </>
+            )}
           </button>
         </div>
       </aside>
@@ -355,6 +502,15 @@ export function AdminApp() {
               onClick={() => setMobile(!mobile)}
             >
               <Menu size={20} />
+            </button>
+            <button
+              type="button"
+              className="ad-topbar-sidebar-toggle"
+              onClick={toggleCollapsed}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
             </button>
             <span>Workspace</span>
             <ChevronRight size={14} />
@@ -881,7 +1037,9 @@ export function AdminApp() {
                         "Genre",
                         "Release date",
                         "Release status",
-                        "Plays / Downloads",
+                        "Plays",
+                        "Downloads",
+                        "Likes",
                         "Track visibility",
                         "Details",
                       ].map((x) => (
@@ -911,7 +1069,22 @@ export function AdminApp() {
                           </Pill>
                         </td>
                         <td>
-                          {t.playCount.toLocaleString()} / {t.downloadCount.toLocaleString()}
+                          <span className="ad-stat-pill plays" title={`${t.playCount.toLocaleString()} plays`}>
+                            <Play size={11} />
+                            <span>{formatMetricCount(t.playCount)}</span>
+                          </span>
+                        </td>
+                        <td>
+                          <span className="ad-stat-pill downloads" title={`${t.downloadCount.toLocaleString()} downloads`}>
+                            <Download size={11} />
+                            <span>{formatMetricCount(t.downloadCount)}</span>
+                          </span>
+                        </td>
+                        <td>
+                          <span className="ad-stat-pill likes" title={`${(t.likeCount || 0).toLocaleString()} likes`}>
+                            <Heart size={11} />
+                            <span>{formatMetricCount(t.likeCount || 0)}</span>
+                          </span>
                         </td>
                         <td>
                           <Pill tone={t.published ? "green" : ""}>
@@ -1357,7 +1530,12 @@ export function AdminApp() {
           {page === "Streaming & Anti-Fraud" && <AdminTelemetry data={data} />}
           {page === "Analytics" && <AdminAnalytics data={data} />}
           {page === "Staff & Access" && <AdminStaff data={data} />}
-          {page === "Audit Log" && <AdminAuditLogView data={data} />}
+          {page === "Audit Log" &&
+            (["super_admin", "admin"].includes(data.currentUser.role) ? (
+              <AdminAuditLogView data={data} />
+            ) : (
+              <Empty title="Access restricted" />
+            ))}
           <footer className="ad-footer">
             <span>
               <span className="ad-dot" />
@@ -1408,6 +1586,9 @@ export function AdminApp() {
                   </Pill>
                   {detail.isrc && <Pill>Official ISRC: {detail.isrc}</Pill>}
                   <Pill>Plugg Track ID: {detail.pluggTrackId || "Unassigned"}</Pill>
+                  <Pill>Plays: {detail.playCount.toLocaleString()}</Pill>
+                  <Pill>Downloads: {detail.downloadCount.toLocaleString()}</Pill>
+                  <Pill>Likes: {(detail.likeCount || 0).toLocaleString()}</Pill>
                 </div>
                 {detail.hasSamplesOrBeats && (
                   <p style={{ margin: "4px 0", fontSize: 13 }}>
@@ -1479,6 +1660,8 @@ function AdminGate({
 }) {
   const [error, setError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
@@ -1498,73 +1681,208 @@ function AdminGate({
       setSigningIn(false);
     }
   };
+
+  const isExpired =
+    result?.status === "unauthenticated" && result.reason === "session_expired";
+  const isForbidden = result?.status === "forbidden";
+  const isUnavailable = result?.status === "unavailable";
+
   return (
     <div className="ad-app ad-gate">
+      <div className="ad-gate-ambient-glow" aria-hidden="true" />
       <div className="ad-gate-card">
-        <div className="ad-brand">
-          <AdminBrand />
-        </div>
-        <Pill>
-          <LockKeyhole size={12} />
-          Role-protected administration
-        </Pill>
-        <h1>
-          {loading
-            ? "Connecting to Plugg…"
-            : result?.status === "forbidden"
-              ? "Access denied"
-              : result?.status === "unavailable"
-                ? "Database unavailable"
-                : result?.status === "unauthenticated" && result.reason === "session_expired"
-                  ? "Session expired"
-                  : "Sign in to Plugg Admin"}
-        </h1>
-        <p role="status">
-          {loading
-            ? "Verifying your existing session before loading administrative records."
-            : result && result.status !== "ok"
-              ? result.message
-              : ""}
-        </p>
-        {!loading && result?.status === "unauthenticated" && (
-          <form className="ad-form" onSubmit={submit}>
-            <label>
-              Email or username
-              <input name="identifier" autoComplete="username" required />
-            </label>
-            <label>
-              Password
-              <input name="password" type="password" autoComplete="current-password" required />
-            </label>
-            {error && <p role="alert">{error}</p>}
-            <button className="ad-btn primary" disabled={signingIn}>
-              {signingIn ? "Signing in…" : "Sign in with Plugg"}
-            </button>
-          </form>
-        )}
-        {!loading && result?.status === "forbidden" && (
-          <div className="ad-gate-links">
-            <a href="/admin">Back to overview</a>
-            <button
-              className="ad-btn"
-              onClick={async () => {
-                await logoutUser();
-                await refresh();
-              }}
-            >
-              Use another account
-            </button>
+        {/* Brand Header */}
+        <div className="ad-gate-header">
+          <div className="ad-brand">
+            <AdminBrand />
           </div>
+          <span className="ad-gate-security-pill">
+            <ShieldCheck size={13} className="ad-gate-pill-icon" />
+            <span>Staff Portal</span>
+          </span>
+        </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="ad-gate-loading-state">
+            <div className="ad-gate-spinner-box">
+              <div className="ad-gate-spinner-ring" />
+              <LockKeyhole size={22} className="ad-gate-spinner-icon" />
+            </div>
+            <div className="ad-gate-text-group">
+              <h1 className="ad-gate-title">Connecting to Plugg…</h1>
+              <p className="ad-gate-description" role="status">
+                Verifying your administrative session and role privileges.
+              </p>
+            </div>
+            <div className="ad-gate-pulse-bar">
+              <div className="ad-gate-pulse-fill" />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Forbidden / Access Denied */}
+            {isForbidden && (
+              <div className="ad-gate-status-pane error">
+                <div className="ad-gate-icon-circle rose">
+                  <ShieldAlert size={28} />
+                </div>
+                <div className="ad-gate-text-group">
+                  <h1 className="ad-gate-title">Access Denied</h1>
+                  <p className="ad-gate-description">
+                    {result?.message ||
+                      "This account does not have active administrative or moderator access to Plugg."}
+                  </p>
+                </div>
+                <div className="ad-gate-actions">
+                  <button
+                    type="button"
+                    className="ad-btn ad-btn-primary ad-gate-submit-btn"
+                    onClick={async () => {
+                      await logoutUser();
+                      await refresh();
+                    }}
+                  >
+                    <span>Sign in with another account</span>
+                    <ArrowRight size={14} />
+                  </button>
+                  <a href="/" className="ad-gate-link-subtle">
+                    Return to listener home
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Unavailable / Database Down */}
+            {isUnavailable && (
+              <div className="ad-gate-status-pane warning">
+                <div className="ad-gate-icon-circle amber">
+                  <AlertTriangle size={28} />
+                </div>
+                <div className="ad-gate-text-group">
+                  <h1 className="ad-gate-title">Database Unavailable</h1>
+                  <p className="ad-gate-description">
+                    {result?.message ||
+                      "Could not reach the Plugg backend. Check your server connection and retry."}
+                  </p>
+                </div>
+                <div className="ad-gate-actions">
+                  <button
+                    type="button"
+                    className="ad-btn ad-btn-primary ad-gate-submit-btn"
+                    onClick={() => void refresh()}
+                  >
+                    <RefreshCw size={14} />
+                    <span>Retry connection</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Unauthenticated / Sign-in Form */}
+            {!isForbidden && !isUnavailable && (
+              <div className="ad-gate-auth-pane">
+                <div className="ad-gate-text-group">
+                  <h1 className="ad-gate-title">Sign in to Plugg Admin</h1>
+                  <p className="ad-gate-description">
+                    {isExpired
+                      ? "Your session expired. Please sign in again to continue."
+                      : "Enter your staff credentials to access the control center."}
+                  </p>
+                </div>
+
+                {isExpired && (
+                  <div className="ad-gate-banner warning">
+                    <Clock3 size={15} />
+                    <span>Session timed out for security. Re-authentication required.</span>
+                  </div>
+                )}
+
+                <form className="ad-gate-form" onSubmit={submit}>
+                  <div className="ad-gate-field">
+                    <label className="ad-gate-label" htmlFor="admin-identifier">
+                      <span>Email or username</span>
+                    </label>
+                    <div className="ad-gate-input-wrapper">
+                      <User size={16} className="ad-gate-input-icon" />
+                      <input
+                        id="admin-identifier"
+                        name="identifier"
+                        className="ad-gate-input"
+                        placeholder="e.g. god or staff@plugg.site"
+                        autoComplete="username"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="ad-gate-field">
+                    <label className="ad-gate-label" htmlFor="admin-password">
+                      <span>Password</span>
+                    </label>
+                    <div className="ad-gate-input-wrapper">
+                      <Lock size={16} className="ad-gate-input-icon" />
+                      <input
+                        id="admin-password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        className="ad-gate-input"
+                        placeholder="••••••••••••"
+                        autoComplete="current-password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="ad-gate-password-toggle"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="ad-gate-banner error" role="alert">
+                      <AlertTriangle size={15} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="ad-btn ad-btn-primary ad-gate-submit-btn"
+                    disabled={signingIn}
+                  >
+                    {signingIn ? (
+                      <>
+                        <RefreshCw size={15} className="ad-spin" />
+                        <span>Verifying credentials…</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Sign in with Plugg</span>
+                        <ArrowRight size={15} />
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+          </>
         )}
-        {!loading && result?.status === "unavailable" && (
-          <button className="ad-btn" onClick={() => void refresh()}>
-            Retry connection
-          </button>
-        )}
-        <small>
-          Uses the existing Plugg session and active administrative membership. No demo accounts or
-          fallback data.
-        </small>
+
+        {/* Security Footer */}
+        <div className="ad-gate-footer">
+          <div className="ad-gate-footer-security">
+            <LockKeyhole size={12} />
+            <span>Role-protected administration · Real records only</span>
+          </div>
+          <span className="ad-gate-footer-note">
+            Africa/Kampala · Strict RBAC enforcement
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Trash2,
   Unlock,
+  Upload,
   UserCheck,
   UserPlus,
   Users,
@@ -24,6 +25,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { performAdminOperation, retryAdminAudio } from "@/lib/api";
 import { approveReleaseFn, requestChangesReleaseFn } from "@/lib/api";
 import type { AdminSnapshot } from "./model";
+import { safeMediaUrl } from "./model";
 import { AdminDropdown } from "./dropdown";
 
 type Action =
@@ -174,6 +176,53 @@ export function AdminActions({
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [imageBase64, setImageBase64] = useState("");
+  const [imageMeta, setImageMeta] = useState<{
+    width: number;
+    height: number;
+    size: number;
+    name: string;
+  } | null>(null);
+  const [imageWarning, setImageWarning] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleImageFile = (file: File) => {
+    setImageWarning("");
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setImageWarning("Please select a valid PNG, JPG, or WebP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageWarning("Image file size must be 5 MB or smaller.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (!result) return;
+      const img = new Image();
+      img.onload = () => {
+        const width = img.naturalWidth || img.width;
+        const height = img.naturalHeight || img.height;
+        const ratio = width / height;
+        setImageMeta({ width, height, size: file.size, name: file.name });
+        setImageBase64(result);
+        if (ratio < 1.7 || ratio > 2.3) {
+          setImageWarning(
+            `Notice: Uploaded image is ${width}×${height} (${ratio.toFixed(2)}:1). Recommended aspect ratio is 2:1 (e.g. 800×400 px) for optimal display on discovery cards.`
+          );
+        } else if (width < 600 || height < 300) {
+          setImageWarning(
+            `Notice: Uploaded image resolution (${width}×${height} px) is lower than the recommended 800×400 px minimum.`
+          );
+        } else {
+          setImageWarning("");
+        }
+      };
+      img.src = result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const isModerator = data.currentUser.role === "moderator";
   const rawAllowed = (pageActions[page] || []).filter(
@@ -295,6 +344,10 @@ export function AdminActions({
     setRole("moderator");
     setConfirmed(false);
     setMessage("");
+    setImageBase64("");
+    setImageMeta(null);
+    setImageWarning("");
+    setDragActive(false);
   };
 
   const selectTarget = (id: string) => {
@@ -312,6 +365,9 @@ export function AdminActions({
       setName(g.name);
       setSlug(g.slug);
       setImage(g.image);
+      setImageBase64("");
+      setImageMeta(null);
+      setImageWarning("");
     }
     const a = data.artists.find((x) => x.id === id);
     if (a) {
@@ -380,7 +436,11 @@ export function AdminActions({
         if (action === "create_genre" || action === "edit_genre") {
           fields["name"] = name;
           fields["slug"] = slug;
-          fields["image"] = image;
+          if (imageBase64) {
+            fields["imageBase64"] = imageBase64;
+          } else if (image) {
+            fields["image"] = image;
+          }
         }
         await performAdminOperation({ data: fields });
       }
@@ -523,15 +583,142 @@ export function AdminActions({
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
                   />
+                  <span className="ad-field-hint">URL identifier matching the discovery path, e.g. "afrobeats".</span>
                 </div>
+
                 <div className="ad-form-field">
-                  <span className="ad-form-label">Artwork URL</span>
-                  <input
-                    className="ad-input"
-                    placeholder="https://…"
-                    value={image}
-                    onChange={(e) => setImage(e.target.value)}
-                  />
+                  <div className="ad-field-header">
+                    <span className="ad-form-label">Cover Artwork</span>
+                    <span className="ad-badge-req">2:1 Landscape · Rec. 800×400 px</span>
+                  </div>
+
+                  {/* Requirements & Guidelines */}
+                  <div className="ad-upload-specs">
+                    <div className="ad-upload-spec-item">
+                      <b>Aspect Ratio:</b> 2:1 Landscape
+                    </div>
+                    <div className="ad-upload-spec-item">
+                      <b>Dimensions:</b> 800 × 400 px recommended (min 600×300)
+                    </div>
+                    <div className="ad-upload-spec-item">
+                      <b>Format & Size:</b> PNG, JPG, or WebP up to 5 MB
+                    </div>
+                    <div className="ad-upload-spec-item">
+                      <b>Cloud Storage:</b> Cloudflare R2 bucket (<code>plugg-private-media</code>)
+                    </div>
+                  </div>
+
+                  {/* Live Card Preview or Dropzone */}
+                  {imageBase64 || image ? (
+                    <div className="ad-genre-preview-container">
+                      <div className="ad-genre-preview-card">
+                        <img
+                          src={imageBase64 || safeMediaUrl(image) || image}
+                          alt={`${name || "Genre"} preview`}
+                          className="ad-genre-preview-img"
+                        />
+                        <div className="ad-genre-preview-overlay">
+                          <span className="ad-genre-preview-pill">DISCOVERY PREVIEW</span>
+                          <h3 className="ad-genre-preview-title">{name || "Genre Name"}</h3>
+                          <p className="ad-genre-preview-slug">/{slug || "slug"}</p>
+                        </div>
+                      </div>
+
+                      <div className="ad-genre-preview-details">
+                        {imageMeta ? (
+                          <div className="ad-genre-file-info">
+                            <span className="ad-genre-dim-tag">
+                              {imageMeta.width} × {imageMeta.height} px ({(imageMeta.width / imageMeta.height).toFixed(2)}:1)
+                            </span>
+                            <span className="ad-genre-size-tag">
+                              {(imageMeta.size / 1024).toFixed(0)} KB · {imageMeta.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="ad-genre-file-info">
+                            <span className="ad-genre-dim-tag">Current Cloudflare R2 Artwork</span>
+                            <span className="ad-genre-size-tag">{image}</span>
+                          </div>
+                        )}
+
+                        <div className="ad-genre-preview-actions">
+                          <label className="ad-btn ad-btn-secondary ad-btn-sm" style={{ cursor: "pointer" }}>
+                            <Upload size={14} />
+                            <span>{imageBase64 ? "Change file" : "Upload new image"}</span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              style={{ display: "none" }}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleImageFile(f);
+                              }}
+                            />
+                          </label>
+                          {imageBase64 && (
+                            <button
+                              type="button"
+                              className="ad-btn ad-btn-danger ad-btn-sm"
+                              onClick={() => {
+                                setImageBase64("");
+                                setImageMeta(null);
+                                setImageWarning("");
+                              }}
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`ad-file-dropzone ${dragActive ? "ad-dropzone-active" : ""}`}
+                      onDragEnter={(e) => {
+                        e.preventDefault();
+                        setDragActive(true);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragActive(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setDragActive(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragActive(false);
+                        const f = e.dataTransfer.files?.[0];
+                        if (f) handleImageFile(f);
+                      }}
+                    >
+                      <Upload size={28} className="ad-dropzone-icon" />
+                      <div className="ad-dropzone-text">
+                        <span className="ad-dropzone-title">Upload genre cover artwork</span>
+                        <span className="ad-dropzone-hint">Drag and drop file here, or click to browse</span>
+                      </div>
+                      <label className="ad-btn ad-btn-primary ad-btn-sm" style={{ cursor: "pointer" }}>
+                        <span>Choose image</span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          style={{ display: "none" }}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleImageFile(f);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+
+                  {imageWarning && (
+                    <div className="ad-genre-warning">
+                      <AlertTriangle size={15} />
+                      <span>{imageWarning}</span>
+                    </div>
+                  )}
                 </div>
               </>
             )}

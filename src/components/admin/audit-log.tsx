@@ -4,6 +4,7 @@ import {
   AudioLines,
   BadgeCheck,
   CheckCircle2,
+  ClipboardList,
   Clock3,
   Copy,
   FileCheck,
@@ -11,6 +12,7 @@ import {
   History,
   Lock,
   RefreshCw,
+  RotateCcw,
   Search,
   Shield,
   ShieldAlert,
@@ -283,29 +285,58 @@ export function AdminAuditLogView({ data }: { data: AdminSnapshot }) {
       {/* Metrics Row */}
       <div className="ad-metrics ad-metrics-5">
         <article className="ad-metric-card">
-          <span>Total audit entries</span>
-          <strong>{metrics.total}</strong>
-          <small>Durable event log</small>
+          <div className="ad-metric-card-head">
+            <span className="ad-metric-card-label">Total entries</span>
+            <span className="ad-metric-card-icon neutral">
+              <ClipboardList size={14} />
+            </span>
+          </div>
+          <strong className="ad-metric-card-num">{metrics.total}</strong>
+          <small className="ad-metric-card-sub">Durable event log</small>
         </article>
+
         <article className="ad-metric-card">
-          <span>Release approvals</span>
-          <strong className="text-emerald-500">{metrics.approvals}</strong>
-          <small>Reviewed & approved</small>
+          <div className="ad-metric-card-head">
+            <span className="ad-metric-card-label">Approvals</span>
+            <span className="ad-metric-card-icon emerald">
+              <CheckCircle2 size={14} />
+            </span>
+          </div>
+          <strong className="ad-metric-card-num text-emerald-600">{metrics.approvals}</strong>
+          <small className="ad-metric-card-sub">Reviewed & approved</small>
         </article>
+
         <article className="ad-metric-card">
-          <span>Changes requested</span>
-          <strong className="text-amber-500">{metrics.corrections}</strong>
-          <small>Sent back to artists</small>
+          <div className="ad-metric-card-head">
+            <span className="ad-metric-card-label">Corrections</span>
+            <span className="ad-metric-card-icon amber">
+              <RotateCcw size={14} />
+            </span>
+          </div>
+          <strong className="ad-metric-card-num text-amber-600">{metrics.corrections}</strong>
+          <small className="ad-metric-card-sub">Sent back to artists</small>
         </article>
+
         <article className="ad-metric-card">
-          <span>Rights & holds</span>
-          <strong className="text-rose-500">{metrics.rightsActions}</strong>
-          <small>Holds, takedowns, reinstates</small>
+          <div className="ad-metric-card-head">
+            <span className="ad-metric-card-label">Rights & holds</span>
+            <span className="ad-metric-card-icon rose">
+              <ShieldAlert size={14} />
+            </span>
+          </div>
+          <strong className="ad-metric-card-num text-rose-600">{metrics.rightsActions}</strong>
+          <small className="ad-metric-card-sub">Holds, takedowns, reinstates</small>
         </article>
+
         <article className="ad-metric-card">
-          <span>Staff & roles</span>
-          <strong className="text-blue-500">{metrics.staffActions}</strong>
-          <small>RBAC privilege updates</small>
+          <div className="ad-metric-card-head">
+            <span className="ad-metric-card-label">Staff & roles</span>
+            <span className="ad-metric-card-icon blue">
+              <Users size={14} />
+            </span>
+          </div>
+          <strong className="ad-metric-card-num text-blue-600">{metrics.staffActions}</strong>
+          <small className="ad-metric-card-sub">RBAC privilege updates</small>
         </article>
       </div>
 

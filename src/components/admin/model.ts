@@ -25,6 +25,7 @@ export interface AdminTrack {
   durationSeconds: number;
   playCount: number;
   downloadCount: number;
+  likeCount: number;
   published: boolean;
   releaseDate: string;
   features: string | null;
@@ -310,4 +311,10 @@ export function reviewHistory(value: unknown): AdminHistory[] {
       feedback: typeof x.feedback === "string" ? x.feedback : null,
       notes: typeof x.notes === "string" ? x.notes : null,
     }));
+}
+
+export function formatMetricCount(n: number = 0): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 10_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
+  return n.toLocaleString();
 }
