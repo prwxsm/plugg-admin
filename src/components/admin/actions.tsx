@@ -27,6 +27,7 @@ import { approveReleaseFn, requestChangesReleaseFn } from "@/lib/api";
 import type { AdminSnapshot } from "./model";
 import { safeMediaUrl } from "./model";
 import { AdminDropdown } from "./dropdown";
+import { GenreCoverCropper } from "./genre-cropper";
 
 type Action =
   | "retry_audio"
@@ -176,6 +177,7 @@ export function AdminActions({
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [rawImageSrc, setRawImageSrc] = useState("");
   const [imageBase64, setImageBase64] = useState("");
   const [imageMeta, setImageMeta] = useState<{
     width: number;
@@ -204,20 +206,9 @@ export function AdminActions({
       img.onload = () => {
         const width = img.naturalWidth || img.width;
         const height = img.naturalHeight || img.height;
-        const ratio = width / height;
         setImageMeta({ width, height, size: file.size, name: file.name });
+        setRawImageSrc(result);
         setImageBase64(result);
-        if (ratio < 1.7 || ratio > 2.3) {
-          setImageWarning(
-            `Notice: Uploaded image is ${width}×${height} (${ratio.toFixed(2)}:1). Recommended aspect ratio is 2:1 (e.g. 800×400 px) for optimal display on discovery cards.`
-          );
-        } else if (width < 600 || height < 300) {
-          setImageWarning(
-            `Notice: Uploaded image resolution (${width}×${height} px) is lower than the recommended 800×400 px minimum.`
-          );
-        } else {
-          setImageWarning("");
-        }
       };
       img.src = result;
     };
@@ -344,6 +335,7 @@ export function AdminActions({
     setRole("moderator");
     setConfirmed(false);
     setMessage("");
+    setRawImageSrc("");
     setImageBase64("");
     setImageMeta(null);
     setImageWarning("");
@@ -365,6 +357,7 @@ export function AdminActions({
       setName(g.name);
       setSlug(g.slug);
       setImage(g.image);
+      setRawImageSrc("");
       setImageBase64("");
       setImageMeta(null);
       setImageWarning("");
@@ -614,69 +607,34 @@ export function AdminActions({
                     </div>
                   </div>
 
-                  {/* Live Card Preview or Dropzone */}
-                  {imageBase64 || image ? (
-                    <div className="ad-genre-preview-container">
-                      <div className="ad-genre-preview-card">
-                        <img
-                          src={imageBase64 || safeMediaUrl(image) || image}
-                          alt={`${name || "Genre"} preview`}
-                          className="ad-genre-preview-img"
-                        />
-                        <div className="ad-genre-preview-overlay">
-                          <span className="ad-genre-preview-pill">DISCOVERY PREVIEW</span>
-                          <h3 className="ad-genre-preview-title">{name || "Genre Name"}</h3>
-                          <p className="ad-genre-preview-slug">/{slug || "slug"}</p>
-                        </div>
-                      </div>
-
-                      <div className="ad-genre-preview-details">
-                        {imageMeta ? (
-                          <div className="ad-genre-file-info">
-                            <span className="ad-genre-dim-tag">
-                              {imageMeta.width} × {imageMeta.height} px ({(imageMeta.width / imageMeta.height).toFixed(2)}:1)
-                            </span>
-                            <span className="ad-genre-size-tag">
-                              {(imageMeta.size / 1024).toFixed(0)} KB · {imageMeta.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="ad-genre-file-info">
-                            <span className="ad-genre-dim-tag">Current Cloudflare R2 Artwork</span>
-                            <span className="ad-genre-size-tag">{image}</span>
-                          </div>
-                        )}
-
-                        <div className="ad-genre-preview-actions">
-                          <label className="ad-btn ad-btn-secondary ad-btn-sm" style={{ cursor: "pointer" }}>
-                            <Upload size={14} />
-                            <span>{imageBase64 ? "Change file" : "Upload new image"}</span>
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/webp"
-                              style={{ display: "none" }}
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) handleImageFile(f);
-                              }}
-                            />
-                          </label>
-                          {imageBase64 && (
-                            <button
-                              type="button"
-                              className="ad-btn ad-btn-danger ad-btn-sm"
-                              onClick={() => {
-                                setImageBase64("");
-                                setImageMeta(null);
-                                setImageWarning("");
-                              }}
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                  {/* Live Cropper & Preview or Dropzone */}
+                  {rawImageSrc || image ? (
+                    <GenreCoverCropper
+                      rawImageSrc={rawImageSrc}
+                      initialImage={image}
+                      meta={imageMeta}
+                      genreName={name}
+                      genreSlug={slug}
+                      onCropExport={(croppedBase64) => {
+                        setImageBase64(croppedBase64);
+                      }}
+                      onChangeFile={(file) => handleImageFile(file)}
+                      onReset={() => {
+                        setRawImageSrc("");
+                        setImageBase64("");
+                        setImageMeta(null);
+                        setImageWarning("");
+                      }}
+                      onEditExistingArtwork={
+                        image
+                          ? () => {
+                              const url = safeMediaUrl(image) || image;
+                              setRawImageSrc(url);
+                              setImageWarning("");
+                            }
+                          : undefined
+                      }
+                    />
                   ) : (
                     <div
                       className={`ad-file-dropzone ${dragActive ? "ad-dropzone-active" : ""}`}
