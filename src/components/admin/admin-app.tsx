@@ -381,26 +381,28 @@ export function AdminApp() {
       >
 
         <div className="ad-sidebar-header">
-          <Link
-            to="/admin"
-            className="ad-brand"
-            title="Plugg Admin"
-            onClick={() => mobile && setMobile(false)}
-          >
-            <AdminBrand markOnly={collapsed} />
-          </Link>
-          <button
-            type="button"
-            className="ad-sidebar-toggle-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleCollapsed();
-            }}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
+          <div className="ad-logo-hover-container">
+            <Link
+              to="/admin"
+              className="ad-brand"
+              title="Plugg Admin"
+              onClick={() => mobile && setMobile(false)}
+            >
+              <AdminBrand markOnly={collapsed} />
+            </Link>
+            <button
+              type="button"
+              className="ad-logo-collapse-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleCollapsed();
+              }}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+          </div>
         </div>
 
         {!collapsed && <p className="ad-staff-label">STAFF BACK-OFFICE</p>}
@@ -515,15 +517,6 @@ export function AdminApp() {
               onClick={() => setMobile(!mobile)}
             >
               <Menu size={20} />
-            </button>
-            <button
-              type="button"
-              className="ad-topbar-sidebar-toggle"
-              onClick={toggleCollapsed}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
             </button>
             <span>Workspace</span>
             <ChevronRight size={14} />
@@ -992,10 +985,20 @@ export function AdminApp() {
           )}
           {page === "Scheduled Releases" && (
             <>
-              <Unavailable>
-                The existing scheduler publishes only when the listener data loader runs. This admin
-                view does not trigger it. Independent midnight scheduling is not implemented.
-              </Unavailable>
+              <div className="ad-status-banner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, padding: "12px 16px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, marginBottom: 16 }}>
+                <span style={{ fontSize: 13, color: "#334155" }}>
+                  Releases scheduled for midnight Africa/Kampala publish automatically. Overdue records publish on platform refresh.
+                </span>
+                <button
+                  type="button"
+                  className="ad-btn ad-btn-sm"
+                  onClick={() => void refresh()}
+                  disabled={loading}
+                >
+                  <RefreshCw size={13} className={loading ? "ad-spin" : ""} />
+                  <span>Check &amp; Publish Overdue</span>
+                </button>
+              </div>
               <section className="ad-panel">
                 <div className="ad-table-wrap">
                   <table>

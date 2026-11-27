@@ -592,19 +592,25 @@ export function AdminActions({
                     <span className="ad-badge-req">2:1 Landscape · Rec. 800×400 px</span>
                   </div>
 
-                  {/* Requirements & Guidelines */}
-                  <div className="ad-upload-specs">
-                    <div className="ad-upload-spec-item">
-                      <b>Aspect Ratio:</b> 2:1 Landscape
+                  {/* Requirements & Guidelines - Visually aligned vertical list */}
+                  <div className="ad-upload-specs-vertical">
+                    <div className="ad-spec-row">
+                      <span className="ad-spec-label">Aspect Ratio</span>
+                      <span className="ad-spec-value">2:1 Landscape</span>
                     </div>
-                    <div className="ad-upload-spec-item">
-                      <b>Dimensions:</b> 800 × 400 px recommended (min 600×300)
+                    <div className="ad-spec-row">
+                      <span className="ad-spec-label">Dimensions</span>
+                      <span className="ad-spec-value">800 × 400 px recommended (min. 600 × 300)</span>
                     </div>
-                    <div className="ad-upload-spec-item">
-                      <b>Format & Size:</b> PNG, JPG, or WebP up to 5 MB
+                    <div className="ad-spec-row">
+                      <span className="ad-spec-label">Format &amp; Size</span>
+                      <span className="ad-spec-value">PNG, JPG, or WebP · Up to 5 MB</span>
                     </div>
-                    <div className="ad-upload-spec-item">
-                      <b>Cloud Storage:</b> Cloudflare R2 bucket (<code>plugg-private-media</code>)
+                    <div className="ad-spec-row">
+                      <span className="ad-spec-label">Cloud Storage</span>
+                      <span className="ad-spec-value">
+                        Cloudflare R2 (<code>plugg-private-media</code>)
+                      </span>
                     </div>
                   </div>
 
