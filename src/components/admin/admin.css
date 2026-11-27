@@ -1607,7 +1607,6 @@
   max-width: 440px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-top: 3px solid #0284c7;
   border-radius: 16px;
   padding: 36px 32px 28px;
   box-shadow: 
@@ -3905,4 +3904,244 @@
   opacity: 1;
   transform: translateY(-50%) scale(1);
 }
+
+/* ==========================================================================
+   Collapsible Panel (Music Catalog Review History)
+   ========================================================================== */
+
+.ad-collapsible-panel {
+  margin-top: 24px;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--ad-border);
+  background: #ffffff;
+}
+
+.ad-collapsible-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.ad-collapsible-trigger:hover {
+  background: #f8fafc;
+}
+
+.ad-collapsible-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ad-collapsible-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ad-collapsible-title-row h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.ad-collapsible-info p {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+}
+
+.ad-collapsible-chevron-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.ad-collapsible-trigger:hover .ad-collapsible-chevron-box {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.ad-collapsible-chevron {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ad-collapsible-chevron.open {
+  transform: rotate(180deg);
+}
+
+.ad-collapsible-body {
+  border-top: 1px solid var(--ad-border);
+  padding: 6px 0;
+  animation: adSlideDown 0.2s ease-out;
+}
+
+@keyframes adSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Filter Buttons for Users and Artist Directory
+   ========================================================================== */
+
+.ad-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.ad-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.ad-filter-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.ad-filter-btn.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.12);
+}
+
+.ad-filter-btn-label {
+  line-height: 1;
+}
+
+.ad-filter-btn-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+  transition: all 0.15s ease;
+}
+
+.ad-filter-btn.active .ad-filter-btn-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Review Queue Specific Button Filter Bar
+   ========================================================================== */
+
+.ad-queue-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.ad-queue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 550;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.ad-queue-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.ad-queue-btn.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+}
+
+.ad-queue-btn-icon {
+  color: #64748b;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.ad-queue-btn.active .ad-queue-btn-icon {
+  color: #ffffff;
+}
+
+.ad-queue-btn-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  transition: all 0.15s ease;
+}
+
+.ad-queue-btn.active .ad-queue-btn-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.ad-queue-btn.critical-alert:not(.active) .ad-queue-btn-badge {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
+.ad-queue-btn.critical-alert:not(.active) .ad-queue-btn-icon {
+  color: #e11d48;
+}
+
 

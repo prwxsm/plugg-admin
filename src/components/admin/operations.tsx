@@ -517,14 +517,6 @@ export function AdminAnalytics({ data }: { data: AdminSnapshot }) {
 }
 export function AdminStaff({ data }: { data: AdminSnapshot }) {
   const staff = data.users.filter((u) => u.adminRole !== null);
-  const history = data.releases
-    .flatMap((r) =>
-      r.reviewHistory.map((h, i) => ({ ...h, key: `${r.id}-${i}`, release: r.title })),
-    )
-    .sort(
-      (a, b) =>
-        (b.timestamp ? Date.parse(b.timestamp) : 0) - (a.timestamp ? Date.parse(a.timestamp) : 0),
-    );
   return (
     <>
       <Unavailable>
@@ -553,26 +545,6 @@ export function AdminStaff({ data }: { data: AdminSnapshot }) {
           ))}
         </div>
         {!staff.length && <Empty />}
-      </section>
-      <section className="ad-panel ad-audit">
-        <div className="ad-panel-head">
-          <div>
-            <h2>Recorded release review history</h2>
-            <p>Read from releases.review_history. This is not a global immutable audit log.</p>
-          </div>
-        </div>
-        {history.map((h) => (
-          <div className="ad-log" key={h.key}>
-            <span className="ad-log-dot" />
-            <time>{kampala(h.timestamp)} EAT</time>
-            <p>
-              {h.actorName || "Actor not recorded"} · {h.action.replaceAll("_", " ")} · {h.release}
-              {h.feedback ? ` — ${h.feedback}` : ""}
-              {h.notes ? ` — ${h.notes}` : ""}
-            </p>
-          </div>
-        ))}
-        {!history.length && <Empty title="No release review history recorded" />}
       </section>
     </>
   );

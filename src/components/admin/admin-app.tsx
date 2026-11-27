@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
   Clock3,
   Disc3,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   LogOut,
   Menu,
   RefreshCw,
+  RotateCcw,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -49,6 +51,8 @@ import {
   type AdminSnapshot,
   type AdminTrack,
   type AdminComplaint,
+  type AdminRelease,
+  type AdminHistory,
 } from "./model";
 import {
   Artwork,
@@ -110,6 +114,60 @@ const subtitles: Record<string, string> = {
   "Staff & Access": "Role-based staff access and durable administrative audit history.",
   "Audit Log": "Permanent immutable audit trail of all staff decisions, rights actions, and role updates.",
 };
+function CollapsibleReviewHistory({ releases }: { releases: AdminRelease[] }) {
+  const [open, setOpen] = useState(false);
+  const history = releases
+    .flatMap((r: AdminRelease) =>
+      r.reviewHistory.map((h: AdminHistory, i: number) => ({ ...h, key: `${r.id}-${i}`, release: r.title })),
+    )
+    .sort(
+      (a, b) =>
+        (b.timestamp ? Date.parse(b.timestamp) : 0) - (a.timestamp ? Date.parse(a.timestamp) : 0),
+    );
+
+  return (
+    <section className="ad-panel ad-audit ad-collapsible-panel">
+      <button
+        type="button"
+        className="ad-collapsible-trigger"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+      >
+        <div className="ad-collapsible-info">
+          <div className="ad-collapsible-title-row">
+            <h2>Recorded release review history</h2>
+            <Pill tone="neutral">{history.length} recorded events</Pill>
+          </div>
+          <p>Read from releases.review_history. This is not a global immutable audit log.</p>
+        </div>
+        <div className="ad-collapsible-chevron-box">
+          <ChevronDown
+            size={18}
+            className={`ad-collapsible-chevron ${open ? "open" : ""}`}
+          />
+        </div>
+      </button>
+
+      {open && (
+        <div className="ad-collapsible-body">
+          {history.map((h) => (
+            <div className="ad-log" key={h.key}>
+              <span className="ad-log-dot" />
+              <time>{kampala(h.timestamp)} EAT</time>
+              <p>
+                {h.actorName || "Actor not recorded"} · {h.action.replaceAll("_", " ")} · {h.release}
+                {h.feedback ? ` — ${h.feedback}` : ""}
+                {h.notes ? ` — ${h.notes}` : ""}
+              </p>
+            </div>
+          ))}
+          {!history.length && <Empty title="No release review history recorded" />}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AdminApp() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const page = nav.find((n) => n[1] === path.replace(/\/$/, ""))?.[0] || "Overview";
@@ -608,40 +666,52 @@ export function AdminApp() {
           )}
           {page === "Review Queue" && (
             <>
-              <div className="ad-tabs">
+              <div className="ad-queue-buttons">
                 {[
-                  ["all", "Pending releases", m.pending],
-                  [
-                    "verifications",
-                    "Artist verifications",
-                    (data.verifications || []).filter((v) => v.status === "pending").length,
-                  ],
-                  ["critical", "Critical SLA (≥18h)", m.approaching + m.breached],
-                  [
-                    "processing",
-                    "Audio processing",
-                    data.releases.filter(
+                  { id: "all", label: "Pending releases", count: m.pending, Icon: Clock3 },
+                  {
+                    id: "verifications",
+                    label: "Artist verifications",
+                    count: (data.verifications || []).filter((v) => v.status === "pending").length,
+                    Icon: BadgeCheck,
+                  },
+                  {
+                    id: "critical",
+                    label: "Critical SLA (≥18h)",
+                    count: m.approaching + m.breached,
+                    Icon: AlertTriangle,
+                  },
+                  {
+                    id: "processing",
+                    label: "Audio processing",
+                    count: data.releases.filter(
                       (r) =>
                         r.status === "processing" ||
                         (r.status === "under_review" &&
                           ["pending", "processing"].includes(r.audioProcessingStatus)),
                     ).length,
-                  ],
-                  [
-                    "changes",
-                    "Changes requested",
-                    data.releases.filter((r) => r.status === "changes_required").length,
-                  ],
-                ].map(([id, label, n]) => (
-                  <button
-                    className={filter === id ? "active" : ""}
-                    key={id}
-                    onClick={() => setFilter(String(id))}
-                  >
-                    {label}
-                    <span>{n}</span>
-                  </button>
-                ))}
+                    Icon: AudioLines,
+                  },
+                  {
+                    id: "changes",
+                    label: "Changes requested",
+                    count: data.releases.filter((r) => r.status === "changes_required").length,
+                    Icon: RotateCcw,
+                  },
+                ].map(({ id, label, count, Icon }) => {
+                  const isCrit = id === "critical" && count > 0;
+                  return (
+                    <button
+                      className={`ad-queue-btn ${filter === id ? "active" : ""} ${isCrit ? "critical-alert" : ""}`}
+                      key={id}
+                      onClick={() => setFilter(id)}
+                    >
+                      <Icon size={14} className="ad-queue-btn-icon" />
+                      <span>{label}</span>
+                      <span className="ad-queue-btn-badge">{count}</span>
+                    </button>
+                  );
+                })}
               </div>
               <div className="ad-review-list">
                 {filter === "verifications" && (
@@ -1025,8 +1095,9 @@ export function AdminApp() {
             </>
           )}
           {page === "Music Catalog" && (
-            <section className="ad-panel">
-              <div className="ad-table-wrap">
+            <>
+              <section className="ad-panel">
+                <div className="ad-table-wrap">
                 <table>
                   <thead>
                     <tr>
@@ -1103,7 +1174,9 @@ export function AdminApp() {
               </div>
               {!tracks.length && <Empty />}
             </section>
-          )}
+            <CollapsibleReviewHistory releases={data.releases} />
+          </>
+        )}
           {page === "Copyright & Complaints" && (
             <>
               <div
@@ -1330,18 +1403,19 @@ export function AdminApp() {
           )}
           {page === "Artist Directory" && (
             <>
-              <div className="ad-tabs">
+              <div className="ad-filter-buttons">
                 {[
-                  ["all", "All artists"],
-                  ["verified", "Verified"],
-                  ["unverified", "Unverified"],
-                ].map(([id, title]) => (
+                  ["all", "All artists", data.artists.length],
+                  ["verified", "Verified", data.artists.filter((a) => a.verified).length],
+                  ["unverified", "Unverified", data.artists.filter((a) => !a.verified).length],
+                ].map(([id, title, n]) => (
                   <button
-                    key={id}
-                    className={filter === id ? "active" : ""}
-                    onClick={() => setFilter(id!)}
+                    key={id as string}
+                    className={`ad-filter-btn ${filter === id ? "active" : ""}`}
+                    onClick={() => setFilter(id as string)}
                   >
-                    {title}
+                    <span className="ad-filter-btn-label">{title as string}</span>
+                    <span className="ad-filter-btn-badge">{n as number}</span>
                   </button>
                 ))}
               </div>
@@ -1446,19 +1520,32 @@ export function AdminApp() {
           )}
           {page === "Users" && (
             <>
-              <div className="ad-tabs">
+              <div className="ad-filter-buttons">
                 {[
-                  ["all", "All accounts"],
-                  ["listener", "Listeners"],
-                  ["artist", "Artists"],
-                  ["admin", "Administrators"],
-                ].map(([id, title]) => (
+                  ["all", "All accounts", data.users.length],
+                  [
+                    "listener",
+                    "Listeners",
+                    data.users.filter((u) => u.accountType === "listener").length,
+                  ],
+                  [
+                    "artist",
+                    "Artists",
+                    data.users.filter((u) => u.accountType === "artist").length,
+                  ],
+                  [
+                    "admin",
+                    "Administrators",
+                    data.users.filter((u) => u.isAdmin || u.adminRole !== null).length,
+                  ],
+                ].map(([id, title, n]) => (
                   <button
-                    key={id}
-                    className={filter === id ? "active" : ""}
-                    onClick={() => setFilter(id!)}
+                    key={id as string}
+                    className={`ad-filter-btn ${filter === id ? "active" : ""}`}
+                    onClick={() => setFilter(id as string)}
                   >
-                    {title}
+                    <span className="ad-filter-btn-label">{title as string}</span>
+                    <span className="ad-filter-btn-badge">{n as number}</span>
                   </button>
                 ))}
               </div>
